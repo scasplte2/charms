@@ -1,0 +1,157 @@
+digraph StateChannelLifecycle {
+    // Layout settings for better text alignment
+    rankdir=LR;
+    nodesep=0.6;
+    ranksep=1.0;
+    splines=true;
+    node [shape=box, style=filled, fontsize=14, fontname="Arial", margin="0.4,0.2"];
+    edge [fontname="Arial", fontsize=10, penwidth=1.5, labeldistance=2.0, labelangle=0];
+
+    // Main channel states
+    Uninitialized [label="Uninitialized", fillcolor="#E8E8E8", fontsize=14];
+    Active [label="Active Channel", fillcolor="#90EE90", fontsize=14];
+    Updated [label="Updated State", fillcolor="#98FB98", fontsize=14];
+    Disputed [label="Disputed", fillcolor="#FFFFE0", fontsize=14];
+    Settled [label="On-Chain Settled", fillcolor="#F08080", fontsize=14];
+    Closed [label="Closed", fillcolor="#D3D3D3", fontsize=14];
+
+    // Operations
+    Launch [label="Launch\n(createFundingTx,\ndistribute)", shape=ellipse, fillcolor="#FFA07A", fontsize=12];
+    Join [label="Join\n(addFunding,\nupdateParticipants)", shape=ellipse, fillcolor="#FFA07A", fontsize=12];
+    Update [label="Update\n(validateTx,\napplyTx, sign)", shape=ellipse, fillcolor="#FFA07A", fontsize=12];
+    Leave [label="Leave\n(withdraw,\nredistribute)", shape=ellipse, fillcolor="#FFA07A", fontsize=12];
+    Commit [label="Commit\n(generateProof,\npublishOnChain)", shape=ellipse, fillcolor="#FFA07A", fontsize=12];
+    Dispute [label="Dispute\n(validateEvidence,\nverifyProof)", shape=ellipse, fillcolor="#FFA07A", fontsize=12];
+    Close [label="Close\n(finalDistribute,\nsettlement)", shape=ellipse, fillcolor="#FFA07A", fontsize=12];
+
+    // Participants cluster
+    subgraph cluster_participants {
+        label="Participants";
+        style=dashed;
+        color="#4682B4";
+        fontsize=12;
+        
+        Participant1 [label="Participant 1\n(Funding cells)", fillcolor="#E0FFFF", fontsize=11];
+        Participant2 [label="Participant 2\n(Funding cells)", fillcolor="#E0FFFF", fontsize=11];
+        ParticipantN [label="Participant N\n(Funding cells)", fillcolor="#E0FFFF", fontsize=11];
+    }
+
+    // Blockchain state cluster
+    subgraph cluster_blockchain {
+        label="On-Chain State";
+        style=dashed;
+        color="#8B4513";
+        fontsize=12;
+        
+        BTCState [label="Bitcoin UTXOs\n(with Charms spells)", fillcolor="#FFFFE0", fontsize=11];
+        ETHState [label="Ethereum Contract\n(state & balances)", fillcolor="#FFFFE0", fontsize=11];
+        ADAState [label="Cardano eUTXOs\n(with datum)", fillcolor="#FFFFE0", fontsize=11];
+    }
+
+    // Abstract cell model cluster
+    subgraph cluster_abstract_cell {
+        label="Abstract Cell Model";
+        style=dashed;
+        color="#800080";
+        fontsize=12;
+        
+        Cell1 [label="AbstractCell\nBTC: {BTC, Tokens}\nMultiSig Lock", fillcolor="#E6E6FA", fontsize=10];
+        Cell2 [label="AbstractCell\nETH: {ETH, ERC20}\nContract Lock", fillcolor="#E6E6FA", fontsize=10];
+        Cell3 [label="AbstractCell\nADA: {ADA, Tokens}\nScript Lock", fillcolor="#E6E6FA", fontsize=10];
+    }
+
+    // Event Chain Interface (connection points to separate diagram)
+    EventChainUpdate [label="Event Chain\nUpdate", shape=diamond, fillcolor="#FFD700", fontsize=10];
+
+    // Main state transitions with better label positioning
+    Uninitialized -> Launch [label=" Initial state\n & funding", labeldistance=2.5];
+    Launch -> Active [label=" Channel created\n with zkVM proof", labeldistance=2.5];
+    
+    // Core update cycle
+    Active -> Update [label=" Proposed\n transaction", labeldistance=2.0];
+    Update -> Updated [label=" New state\n with signatures", labeldistance=2.5];
+    Updated -> Update [label=" Another\n proposed tx", labeldistance=2.0, constraint=false];
+    
+    // Participant operations
+    Active -> Join [label=" New participant\n requests to join", labeldistance=2.5];
+    Join -> Active [label=" Updated participant\n list & funding", labeldistance=2.5];
+    Active -> Leave [label=" Participant\n withdraws", labeldistance=2.0];
+    Leave -> Active [label=" Remaining\n participants", labeldistance=2.0];
+    
+    // Settlement paths
+    Active -> Commit [label=" Unanimous\n agreement", labeldistance=2.0];
+    Commit -> Settled [label=" On-chain\n transactions", labeldistance=2.5];
+    
+    // Dispute path
+    Active -> Dispute [label=" Conflicting\n state claims", labeldistance=2.5];
+    Dispute -> Disputed [label=" Evidence\n presented", labeldistance=2.0];
+    Disputed -> Settled [label=" Resolved\n via proofs", labeldistance=2.5];
+    
+    // Final closing
+    Active -> Close [label=" Final\n settlement", labeldistance=2.0];
+    Updated -> Close [label=" Final\n settlement", labeldistance=2.0];
+    Disputed -> Close [label=" Final\n settlement", labeldistance=2.0];
+    Settled -> Close [label=" Final\n settlement", labeldistance=2.0];
+    Close -> Closed [label=" Assets\n distributed", labeldistance=2.0];
+    
+    // Event chain interactions
+    Update -> EventChainUpdate [label=" Generate\n event", labeldistance=2.0, style=dashed, color="#FFD700"];
+    Updated -> EventChainUpdate [label=" Append to\n chain", labeldistance=2.0, style=dashed, color="#FFD700"];
+    
+    // Participant funding connections
+    Participant1 -> Launch [style=dashed, label=" provide funding", labeldistance=1.5, color="#4682B4"];
+    Participant2 -> Launch [style=dashed, label=" provide funding", labeldistance=1.5, color="#4682B4"];
+    ParticipantN -> Launch [style=dashed, label=" provide funding", labeldistance=1.5, color="#4682B4"];
+    
+    // Blockchain interactions
+    Commit -> BTCState [style=dashed, label=" commit", labeldistance=1.5, color="#FFD700"];
+    Commit -> ETHState [style=dashed, label=" commit", labeldistance=1.5, color="#FFD700"];
+    Dispute -> ADAState [style=dashed, label=" dispute", labeldistance=1.5, color="#FF4500"];
+    Close -> BTCState [style=dashed, label=" settlement", labeldistance=1.5, color="#8B4513"];
+    Close -> ETHState [style=dashed, label=" settlement", labeldistance=1.5, color="#8B4513"];
+    Close -> ADAState [style=dashed, label=" settlement", labeldistance=1.5, color="#8B4513"];
+    
+    // Connect abstract cells to active state
+    Cell1 -> Active [style=dotted, label=" implements", labeldistance=1.0, color="#800080"];
+    Cell2 -> Active [style=dotted, label=" implements", labeldistance=1.0, color="#800080"];
+    Cell3 -> Active [style=dotted, label=" implements", labeldistance=1.0, color="#800080"];
+
+    // Legend positioned in lower left
+    legend [shape=none, margin=0, pos="0,0!", label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4">
+            <TR>
+                <TD COLSPAN="2" BGCOLOR="#f0f0f0"><B>Legend</B></TD>
+            </TR>
+            <TR>
+                <TD BGCOLOR="#90EE90" WIDTH="20" HEIGHT="20"></TD>
+                <TD ALIGN="left">Active States</TD>
+            </TR>
+            <TR>
+                <TD BGCOLOR="#FFA07A" WIDTH="20" HEIGHT="20"></TD>
+                <TD ALIGN="left">Operations</TD>
+            </TR>
+            <TR>
+                <TD BGCOLOR="#E0FFFF" WIDTH="20" HEIGHT="20"></TD>
+                <TD ALIGN="left">Participants</TD>
+            </TR>
+            <TR>
+                <TD BGCOLOR="#FFFFE0" WIDTH="20" HEIGHT="20"></TD>
+                <TD ALIGN="left">Blockchain State</TD>
+            </TR>
+            <TR>
+                <TD BGCOLOR="#E6E6FA" WIDTH="20" HEIGHT="20"></TD>
+                <TD ALIGN="left">Abstract Cells</TD>
+            </TR>
+            <TR>
+                <TD BGCOLOR="#FFD700" WIDTH="20" HEIGHT="20"></TD>
+                <TD ALIGN="left">Event Chain</TD>
+            </TR>
+        </TABLE>
+    >];
+
+    // Graph title
+    label="\nCharms State Channel Lifecycle";
+    fontname="Arial Bold";
+    fontsize=16;
+    labelloc="t";
+}

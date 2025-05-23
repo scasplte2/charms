@@ -1,0 +1,68 @@
+sequenceDiagram
+    participant Dev as Developer
+    participant SDK as Charms SDK
+    participant zkVM as SP1 zkVM
+    participant Bitcoin as Bitcoin Network
+    participant Client as Charms Client
+    
+    Note over Dev, Client: App Development & Deployment Flow
+    
+    %% Development Phase
+    rect rgb(240, 255, 240)
+        Note over Dev, zkVM: Development Phase
+        Dev->>SDK: Write app contract with charms_sdk::main!
+        Note right of Dev: fn(app: &App, tx: &Transaction,<br/>x: &Data, w: &Data) -> bool
+        
+        Dev->>SDK: charms app build
+        SDK->>zkVM: Compile to RISC-V binary
+        zkVM-->>SDK: RISC-V ELF binary
+        SDK-->>Dev: Compiled app binary
+        
+        Dev->>SDK: charms app run (test)
+        SDK->>zkVM: Execute with test inputs
+        zkVM-->>SDK: Execution result
+        SDK-->>Dev: Test results
+    end
+    
+    %% Registration Phase
+    rect rgb(240, 248, 255)
+        Note over Dev, Client: Registration Phase
+        Dev->>zkVM: Generate verification key
+        zkVM-->>Dev: App verification key (VK)
+        
+        Dev->>Dev: Create App structure
+        Note right of Dev: App { tag, identity, vk }
+        
+        Dev->>Client: Register app publicly
+        Note right of Dev: Make VK known to ecosystem
+    end
+    
+    %% Asset Creation Phase
+    rect rgb(255, 248, 220)
+        Note over Dev, Bitcoin: Asset Creation Phase
+        Dev->>Client: Create first charms
+        Note right of Dev: Define initial token/NFT data
+        
+        Client->>Client: Create spell
+        Note right of Client: Spell with app references
+        
+        Client->>zkVM: Generate spell proof
+        zkVM-->>Client: Groth16 proof
+        
+        Client->>Bitcoin: Broadcast transaction
+        Note right of Client: Spell + proof embedded in Taproot
+        Bitcoin-->>Client: Transaction confirmed
+        
+        Client-->>Dev: Charms created successfully
+    end
+    
+    %% Usage Phase
+    rect rgb(255, 240, 240)
+        Note over Dev, Client: Usage Phase
+        Note over Dev, Client: App is now live and can be used by others
+        
+        Dev->>Client: Monitor app usage
+        Client-->>Dev: Usage statistics and transactions
+        
+        Note over Dev, Client: Users can now create assets using this app,<br/>transfer them, and compose with other apps
+    end

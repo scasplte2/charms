@@ -1,0 +1,154 @@
+digraph AppExecutionFlow {
+    rankdir=TB;
+    nodesep=0.8;
+    ranksep=1.0;
+    splines=true;
+    node [shape=box, style=filled, fontname="Arial", margin="0.3,0.2"];
+    edge [fontname="Arial", fontsize=11, penwidth=1.5];
+    
+    // App Contract Structure
+    subgraph cluster_app_structure {
+        label="App Contract Structure";
+        style=rounded;
+        color="#4169E1";
+        bgcolor="#F0F8FF";
+        fontsize=14;
+        
+        AppSig [label="App Contract Signature:\nfn(app: &App, tx: &Transaction,\n    x: &Data, w: &Data) -> bool", fillcolor="#87CEEB", fontsize=11];
+        AppParam [label="App Parameter:\n{\n  tag: char,\n  identity: B32,\n  vk: B32\n}", fillcolor="#87CEFA", fontsize=11];
+        TxParam [label="Transaction Parameter:\n{\n  ins: inputs,\n  refs: references,\n  outs: outputs\n}", fillcolor="#6495ED", fontsize=11];
+        PublicInput [label="Public Input (x):\nApp-specific on-chain data", fillcolor="#4682B4", fontsize=11];
+        PrivateInput [label="Private Input (w):\nApp-specific off-chain data", fillcolor="#5F9EA0", fontsize=11];
+    }
+    
+    // SP1 zkVM Execution Environment
+    subgraph cluster_zkvm {
+        label="SP1 zkVM Execution Environment";
+        style=rounded;
+        color="#8B008B";
+        bgcolor="#F8F8FF";
+        fontsize=14;
+        
+        LoadBinary [label="Load RISC-V Binary\n(compiled app contract)", fillcolor="#DDA0DD", fontsize=12];
+        SetupInputs [label="Setup Inputs\n(serialize parameters)", fillcolor="#DA70D6", fontsize=12];
+        Execute [label="Execute Program\n(RISC-V virtual machine)", fillcolor="#BA55D3", fontsize=12];
+        CheckResult [label="Check Result\n(boolean return value)", fillcolor="#9932CC", fontsize=12];
+        GenerateTrace [label="Generate Execution Trace\n(for proof generation)", fillcolor="#8B008B", fontsize=12];
+    }
+    
+    // Special Case Handling
+    subgraph cluster_special_cases {
+        label="Special Case Handling";
+        style=rounded;
+        color="#2E8B57";
+        bgcolor="#F0FFF0";
+        fontsize=14;
+        
+        TokenTransfer [label="Token Transfer (tag='t'):\n• Check input amount = output amount\n• No proof generation needed\n• Simple balance validation", fillcolor="#98FB98", fontsize=11];
+        NFTTransfer [label="NFT Transfer (tag='n'):\n• Check NFT data unchanged\n• No proof generation needed\n• Simple ownership transfer", fillcolor="#90EE90", fontsize=11];
+        CustomApp [label="Custom App:\n• Full zkVM execution\n• Proof generation required\n• Arbitrary logic validation", fillcolor="#87CEEB", fontsize=11];
+    }
+    
+    // Execution Context
+    subgraph cluster_context {
+        label="Execution Context";
+        style=rounded;
+        color="#FF8C00";
+        bgcolor="#FFF8DC";
+        fontsize=14;
+        
+        AppRegistry [label="App Registry\n(known apps and VKs)", fillcolor="#FFE4B5", fontsize=12];
+        CharmState [label="Charm State\n(current UTXO charms)", fillcolor="#DEB887", fontsize=12];
+        TxContext [label="Transaction Context\n(all inputs and outputs)", fillcolor="#F4A460", fontsize=12];
+    }
+    
+    // Validation Rules
+    subgraph cluster_validation {
+        label="App Contract Validation Rules";
+        style=rounded;
+        color="#DC143C";
+        bgcolor="#FFF0F0";
+        fontsize=14;
+        
+        Conservation [label="Conservation Rules:\n• Token amounts preserved\n• NFT uniqueness maintained\n• Custom app invariants", fillcolor="#FFB6C1", fontsize=12];
+        Authorization [label="Authorization Rules:\n• Valid signatures present\n• Spending conditions met\n• App-specific permissions", fillcolor="#F0A0A0", fontsize=12];
+        StateTransition [label="State Transition Rules:\n• Valid state changes\n• Business logic satisfied\n• Composability constraints", fillcolor="#FFA07A", fontsize=12];
+    }
+    
+    // Flow from Structure to Execution
+    AppSig -> LoadBinary [label="compiled to"];
+    AppParam -> SetupInputs [label="provides"];
+    TxParam -> SetupInputs [label="provides"];
+    PublicInput -> SetupInputs [label="provides"];
+    PrivateInput -> SetupInputs [label="provides"];
+    
+    // Execution Flow
+    LoadBinary -> Execute [label="run"];
+    SetupInputs -> Execute [label="with inputs"];
+    Execute -> CheckResult [label="evaluate"];
+    CheckResult -> GenerateTrace [label="if successful"];
+    
+    // Special Case Flow
+    AppParam -> TokenTransfer [label="if tag='t'", style=dashed];
+    AppParam -> NFTTransfer [label="if tag='n'", style=dashed];
+    AppParam -> CustomApp [label="otherwise"];
+    
+    // Context Flow
+    AppRegistry -> LoadBinary [label="provides binary"];
+    CharmState -> TxParam [label="part of"];
+    TxContext -> Execute [label="available during"];
+    
+    // Validation Flow
+    Execute -> Conservation [label="enforces"];
+    Execute -> Authorization [label="enforces"];
+    Execute -> StateTransition [label="enforces"];
+    
+    // Example Apps
+    subgraph cluster_examples {
+        label="Example App Contract Logic";
+        style=rounded;
+        color="#8B4513";
+        bgcolor="#F5F5DC";
+        fontsize=14;
+        
+        DEXApp [label="DEX App Example:\n• Validate trade ratios\n• Check price bounds\n• Update order book state\n• Ensure atomic swaps", fillcolor="#DEB887", fontsize=11];
+        
+        GameApp [label="Game App Example:\n• Validate level progression\n• Check item requirements\n• Update character stats\n• Enforce game rules", fillcolor="#D2B48C", fontsize=11];
+        
+        LendingApp [label="Lending App Example:\n• Calculate interest\n• Check collateral ratios\n• Update debt positions\n• Enforce liquidation rules", fillcolor="#CD853F", fontsize=11];
+    }
+    
+    CustomApp -> DEXApp [style=dashed, color="#8B4513"];
+    CustomApp -> GameApp [style=dashed, color="#8B4513"];
+    CustomApp -> LendingApp [style=dashed, color="#8B4513"];
+    
+    // Performance Characteristics
+    Performance [label="Performance Characteristics:\n• RISC-V execution speed\n• Proof generation time\n• Memory usage bounds\n• Deterministic execution", shape=ellipse, fillcolor="#E6E6FA", fontsize=10];
+    
+    Execute -> Performance [style=dotted, color="#888888"];
+    
+    // Security Properties
+    Security [label="Security Properties:\n• Isolated execution\n• Deterministic results\n• Tamper-proof proofs\n• Composable verification", shape=diamond, fillcolor="#FFE4E1", fontsize=10];
+    
+    GenerateTrace -> Security [style=dotted, color="#DC143C"];
+    
+    // SDK Integration
+    subgraph cluster_sdk {
+        label="Charms SDK Integration";
+        style=rounded;
+        color="#708090";
+        bgcolor="#F8F8F8";
+        fontsize=14;
+        
+        MacroSystem [label="charms_sdk::main! Macro\n• Generates boilerplate\n• Handles serialization\n• Provides type safety", fillcolor="#D3D3D3", fontsize=11];
+        Utilities [label="SDK Utilities\n• Data serialization\n• Error handling\n• Testing framework", fillcolor="#C0C0C0", fontsize=11];
+    }
+    
+    AppSig -> MacroSystem [style=dotted, color="#708090"];
+    MacroSystem -> Utilities [style=dotted, color="#708090"];
+    
+    label="\nApp Contract Execution Flow\nSP1 zkVM Program Execution and Validation";
+    fontname="Arial Bold";
+    fontsize=16;
+    labelloc="t";
+}

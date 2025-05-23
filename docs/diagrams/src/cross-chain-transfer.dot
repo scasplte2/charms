@@ -1,0 +1,119 @@
+digraph CrossChainTransfer {
+    rankdir=LR;
+    nodesep=1.0;
+    ranksep=2.0;
+    splines=ortho;
+    node [shape=box, style=filled, fontname="Arial", margin="0.3,0.2"];
+    edge [fontname="Arial", fontsize=11, penwidth=1.5];
+    
+    // Main Process Flow (left to right)
+    subgraph cluster_main_flow {
+        label="C3T Process Flow";
+        style=rounded;
+        color="#2E8B57";
+        bgcolor="#F0FFF0";
+        fontsize=14;
+        rank=same;
+        
+        Step0 [label="Step 0:\nCreate Placeholder\n\n• Create UTXO on target chain\n• No spell required\n• Note UTXO ID", fillcolor="#98FB98", fontsize=11];
+        Step1 [label="Step 1:\nBeam Charms\n\n• Create spell with outer_utxo_id\n• Point to target chain UTXO\n• Generate proof of beaming", fillcolor="#90EE90", fontsize=11];
+        Step2 [label="Step 2:\nClaim on Target\n\n• Create spell on target chain\n• Prove source chain beaming\n• Include block hash for security", fillcolor="#87CEEB", fontsize=11];
+    }
+    
+    // Source Chain Implementation
+    subgraph cluster_source_chain {
+        label="Source Chain Implementation (e.g., Bitcoin)";
+        style=rounded;
+        color="#FF8C00";
+        bgcolor="#FFF8DC";
+        fontsize=14;
+        
+        SourceUTXO [label="Source UTXO\nwith Charms", fillcolor="#FFE4B5", fontsize=12];
+        BeamSpell [label="Beaming Spell\n(with outer_utxo_id)", fillcolor="#DEB887", fontsize=12];
+        BeamTx [label="Beaming Transaction\n(on source chain)", fillcolor="#CD853F", fontsize=12];
+    }
+    
+    // Target Chain Implementation
+    subgraph cluster_target_chain {
+        label="Target Chain Implementation (e.g., Cardano)";
+        style=rounded;
+        color="#4169E1";
+        bgcolor="#F0F8FF";
+        fontsize=14;
+        
+        PlaceholderUTXO [label="Placeholder UTXO\n(created first)", fillcolor="#87CEEB", fontsize=12];
+        ReceiveSpell [label="Receiving Spell\n(claims beamed charms)", fillcolor="#87CEFA", fontsize=12];
+        TargetUTXO [label="Target UTXO\nwith Charms", fillcolor="#4682B4", fontsize=12];
+    }
+    
+    // Process Flow
+    Step0 -> Step1 [label="then", fontsize=12, penwidth=2, color="#2E8B57"];
+    Step1 -> Step2 [label="then", fontsize=12, penwidth=2, color="#2E8B57"];
+    
+    // Implementation Connections (clean vertical lines)
+    Step0 -> PlaceholderUTXO [label="creates", style=dashed, color="#4169E1"];
+    Step1 -> SourceUTXO [label="starts with", style=dashed, color="#FF8C00"];
+    Step1 -> BeamSpell [label="creates", color="#FF8C00"];
+    BeamSpell -> BeamTx [label="embedded in", color="#FF8C00"];
+    Step2 -> ReceiveSpell [label="creates", style=dashed, color="#4169E1"];
+    ReceiveSpell -> TargetUTXO [label="results in", color="#4169E1"];
+    
+    // Key Data Structures (bottom section)
+    subgraph cluster_data_structures {
+        label="Key Data Structures";
+        style=rounded;
+        color="#8B008B";
+        bgcolor="#F8F8FF";
+        fontsize=14;
+        
+        OuterUTXOID [label="outer_utxo_id Field\n\n• Optional field in charms output\n• Points to target chain UTXO\n• Enables cross-chain linking", fillcolor="#DDA0DD", fontsize=11];
+        
+        BlockHashProof [label="Block Hash Inclusion\n\n• Prevents alternative history\n• Ensures main chain inclusion\n• Guards against reorgs", fillcolor="#DA70D6", fontsize=11];
+    }
+    
+    // Security Properties (bottom section)
+    subgraph cluster_security {
+        label="Security Properties";
+        style=rounded;
+        color="#DC143C";
+        bgcolor="#FFF0F0";
+        fontsize=14;
+        
+        MainChainCheck [label="Main Chain Verification\n\n• Check block hash in main chain\n• Reject if block not found\n• Prevents invalid transfers", fillcolor="#FFB6C1", fontsize=11];
+        
+        DoubleSpendPrevention [label="Double Spend Prevention\n\n• Source chain prevents double-spending\n• Target chain checks beam proof\n• Only one claim per beam", fillcolor="#FFA07A", fontsize=11];
+    }
+    
+    // Clean connections to data structures and security
+    BeamSpell -> OuterUTXOID [label="includes", style=dotted, color="#8B008B"];
+    ReceiveSpell -> BlockHashProof [label="includes", style=dotted, color="#8B008B"];
+    BeamTx -> MainChainCheck [label="subject to", style=dotted, color="#DC143C"];
+    Step2 -> DoubleSpendPrevention [label="enforces", style=dotted, color="#DC143C"];
+    
+    // Example (right side)
+    subgraph cluster_example {
+        label="Concrete Example: Bitcoin → Cardano";
+        style=rounded;
+        color="#8B4513";
+        bgcolor="#F5F5DC";
+        fontsize=14;
+        
+        BTCExample [label="Bitcoin UTXO:\n• AliceCoin: 100 units\n• AliceNFT: {id: 42, level: 5}", fillcolor="#DEB887", fontsize=11];
+        BeamExample [label="Beam Operation:\n• outer_utxo_id: cardano_utxo_123\n• Block hash: btc_block_456", fillcolor="#CD853F", fontsize=11];
+        CardanoExample [label="Cardano UTXO:\n• AliceCoin: 100 units\n• AliceNFT: {id: 42, level: 5}\n• Same charms, new chain!", fillcolor="#BC9A6A", fontsize=11];
+    }
+    
+    // Example flow (clean right-side flow)
+    BTCExample -> BeamExample [label="beam", color="#8B4513"];
+    BeamExample -> CardanoExample [label="claim", color="#8B4513"];
+    
+    // Connect example to main flow (dotted lines to avoid clutter)
+    SourceUTXO -> BTCExample [style=dotted, color="#8B4513", constraint=false];
+    BeamSpell -> BeamExample [style=dotted, color="#8B4513", constraint=false];
+    TargetUTXO -> CardanoExample [style=dotted, color="#8B4513", constraint=false];
+    
+    label="\nCharms Cross-Chain Transfer (C3T) Process\nMoving Charms Between Blockchain Networks";
+    fontname="Arial Bold";
+    fontsize=16;
+    labelloc="t";
+}

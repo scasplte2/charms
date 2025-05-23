@@ -1,0 +1,109 @@
+sequenceDiagram
+    participant Alice as Alice (User)
+    participant BTC as Bitcoin Network
+    participant BTCClient as Bitcoin Charms Client
+    participant ADA as Cardano Network
+    participant ADAClient as Cardano Charms Client
+    participant zkVM as SP1 zkVM
+    
+    Note over Alice, zkVM: Cross-Chain Asset Journey: BTC → Cardano → BTC
+    
+    %% Initial Setup on Bitcoin
+    rect rgb(255, 248, 220)
+        Note over Alice, BTCClient: Phase 1: Create Assets on Bitcoin
+        Alice->>BTCClient: Create AliceCoin (fungible token)
+        BTCClient->>zkVM: Generate mint proof
+        zkVM-->>BTCClient: Groth16 proof
+        BTCClient->>BTC: Broadcast mint transaction
+        BTC-->>BTCClient: AliceCoin minted (100 units)
+        
+        Alice->>BTCClient: Create AliceArt NFT
+        Note right of Alice: NFT with state: {id: 42, level: 1, exp: 0}
+        BTCClient->>zkVM: Generate NFT creation proof
+        zkVM-->>BTCClient: Groth16 proof
+        BTCClient->>BTC: Broadcast NFT creation
+        BTC-->>BTCClient: AliceArt NFT created
+        BTCClient-->>Alice: Assets ready on Bitcoin
+    end
+    
+    %% Cross-Chain Transfer to Cardano
+    rect rgb(240, 248, 255)
+        Note over Alice, ADAClient: Phase 2: Transfer to Cardano (C3T Process)
+        
+        Alice->>ADAClient: Step 0: Create placeholder UTXO
+        ADAClient->>ADA: Create empty UTXO
+        ADA-->>ADAClient: Placeholder created (cardano_utxo_123)
+        
+        Alice->>BTCClient: Step 1: Beam assets to Cardano
+        Note right of Alice: outer_utxo_id: cardano_utxo_123
+        BTCClient->>BTCClient: Create beaming spell
+        BTCClient->>zkVM: Generate beam proof
+        zkVM-->>BTCClient: Groth16 proof with outer_utxo_id
+        BTCClient->>BTC: Broadcast beaming transaction
+        BTC-->>BTCClient: Assets beamed (block: btc_block_456)
+        
+        Alice->>ADAClient: Step 2: Claim assets on Cardano
+        ADAClient->>ADAClient: Create claiming spell
+        Note right of ADAClient: Includes BTC block hash for security
+        ADAClient->>zkVM: Generate claim proof
+        zkVM-->>ADAClient: Groth16 proof verifying BTC beam
+        ADAClient->>ADA: Broadcast claim transaction
+        ADA-->>ADAClient: Assets claimed successfully
+        ADAClient-->>Alice: AliceCoin & AliceArt now on Cardano!
+    end
+    
+    %% Operations on Cardano
+    rect rgb(240, 255, 240)
+        Note over Alice, ADAClient: Phase 3: Operations on Cardano
+        
+        Alice->>ADAClient: Trade 50 AliceCoin for BobToken
+        Note right of Alice: Using Cardano DeFi protocols
+        ADAClient->>zkVM: Generate trade proof
+        zkVM-->>ADAClient: Groth16 proof
+        ADAClient->>ADA: Execute trade transaction
+        ADA-->>ADAClient: Trade completed
+        
+        Alice->>ADAClient: Level up AliceArt NFT
+        Note right of Alice: Update state: {id: 42, level: 2, exp: 100}
+        ADAClient->>zkVM: Generate NFT update proof
+        zkVM-->>ADAClient: Groth16 proof
+        ADAClient->>ADA: Update NFT transaction
+        ADA-->>ADAClient: NFT leveled up
+        
+        ADAClient-->>Alice: Current holdings: 50 AliceCoin, 25 BobToken, AliceArt (level 2)
+    end
+    
+    %% Return to Bitcoin
+    rect rgb(255, 240, 240)
+        Note over Alice, BTCClient: Phase 4: Return to Bitcoin
+        
+        Alice->>BTCClient: Step 0: Create placeholder on Bitcoin
+        BTCClient->>BTC: Create empty UTXO
+        BTC-->>BTCClient: Placeholder created (bitcoin_utxo_789)
+        
+        Alice->>ADAClient: Step 1: Beam AliceArt back to Bitcoin
+        Note right of Alice: Keep tokens on Cardano, move NFT back
+        ADAClient->>ADAClient: Create beaming spell
+        ADAClient->>zkVM: Generate beam proof
+        zkVM-->>ADAClient: Groth16 proof with outer_utxo_id
+        ADAClient->>ADA: Broadcast beaming transaction
+        ADA-->>ADAClient: AliceArt beamed (block: ada_block_789)
+        
+        Alice->>BTCClient: Step 2: Claim AliceArt on Bitcoin
+        BTCClient->>BTCClient: Create claiming spell
+        BTCClient->>zkVM: Generate claim proof
+        zkVM-->>BTCClient: Groth16 proof verifying Cardano beam
+        BTCClient->>BTC: Broadcast claim transaction
+        BTC-->>BTCClient: AliceArt claimed on Bitcoin
+        
+        BTCClient-->>Alice: AliceArt (level 2) back on Bitcoin!
+        Note right of Alice: NFT retains all upgrades from Cardano
+    end
+    
+    %% Final State
+    rect rgb(248, 248, 255)
+        Note over Alice, ADAClient: Final State Summary
+        Note over Alice, BTCClient: Bitcoin: AliceArt NFT (level 2, exp: 100)
+        Note over Alice, ADAClient: Cardano: 50 AliceCoin + 25 BobToken
+        Note over Alice, zkVM: ✨ Cross-chain asset journey complete! ✨<br/>Same apps work everywhere, assets retain full state
+    end

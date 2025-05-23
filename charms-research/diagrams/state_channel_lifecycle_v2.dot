@@ -1,0 +1,138 @@
+digraph StateChannelLifecycle2 {
+    // Graph settings
+    rankdir=LR;  // Left to right direction
+    nodesep=0.8;  // Increased node separation
+    ranksep=1.0;  // Increased rank separation
+    splines=polyline;  // Straight edge lines with bends
+    node [shape=box, style=filled, fillcolor=lightblue, fontname="Arial", margin="0.3,0.2"];
+    edge [fontname="Arial", fontsize=11, penwidth=1.5, minlen=2];  // Increased edge length
+    
+    // Main channel states with clear left-to-right progression
+    {
+        rank=same;
+        Uninitialized [label="Uninitialized", fillcolor=lightgrey];
+        Active [label="Active Channel", fillcolor=lightgreen];
+        Updated [label="Updated\nState", fillcolor=lightgreen];
+        Settled [label="On-Chain\nSettled", fillcolor=lightyellow];
+        Closed [label="Closed", fillcolor=lightgrey];
+    }
+    
+    // Participants (placed above the main flow)
+    {
+        rank=source;
+        Participant1 [label="Participant 1\n(Funding cells)", fillcolor=lightcyan];
+        Participant2 [label="Participant 2\n(Funding cells)", fillcolor=lightcyan];
+        ParticipantN [label="Participant N\n(Funding cells)", fillcolor=lightcyan];
+    }
+    
+    // Operations (placed between states)
+    Launch [label="Launch Operation\n(createFundingTx, distribute)", shape=ellipse, fillcolor=lightsalmon];
+    Join [label="Join Operation\n(addFunding, updateParticipants)", shape=ellipse, fillcolor=lightsalmon];
+    Update [label="Update Operation\n(validateTx, applyTx, sign)", shape=ellipse, fillcolor=lightsalmon];
+    Leave [label="Leave Operation\n(withdraw, redistribute)", shape=ellipse, fillcolor=lightsalmon];
+    Commit [label="Commit Operation\n(generateProof, publishOnChain)", shape=ellipse, fillcolor=lightsalmon];
+    Dispute [label="Dispute Operation\n(validateEvidence, verifyProof)", shape=ellipse, fillcolor=lightsalmon, pos="4,0!"];
+    Disputed [label="Disputed State", fillcolor=lightyellow, pos="6,0!"];
+    Close [label="Close Operation\n(finalDistribute, settlement)", shape=ellipse, fillcolor=lightsalmon];
+    
+    // Blockchain states (placed below the main flow)
+    {
+        rank=sink;
+        BTCState [label="Bitcoin UTXOs\n(with Charms spells)", fillcolor=lightyellow];
+        ETHState [label="Ethereum Contract\n(state & balances)", fillcolor=lightyellow];
+        ADAState [label="Cardano eUTXOs\n(with datum)", fillcolor=lightyellow];
+    }
+    
+    // Event chain (placed parallel to main flow)
+    {
+        rank=sink;
+        State0 [label="State 0\nInitial", shape=ellipse, fillcolor=white];
+        State1 [label="State 1", shape=ellipse, fillcolor=white];
+        State2 [label="State 2", shape=ellipse, fillcolor=white];
+        StateN [label="State N\nFinal", shape=ellipse, fillcolor=white];
+    }
+    
+    // Abstract cell model (placed parallel to main flow)
+    {
+        rank=source;
+        Cell1 [label="AbstractCell\nchain_id: BTC\nassets: {BTC, Tokens}\ndata: Channel State", fillcolor=lightcyan];
+        Cell2 [label="AbstractCell\nchain_id: ETH\nassets: {ETH, ERC20}\ndata: Channel State", fillcolor=lightcyan];
+        Cell3 [label="AbstractCell\nchain_id: ADA\nassets: {ADA, Tokens}\ndata: Channel State", fillcolor=lightcyan];
+    }
+    
+    // Main flow
+    Uninitialized -> Launch [label="Initial state\n& funding"];
+    Launch -> Active [label="Channel created\nwith zkVM proof"];
+    Active -> Update [label="Proposed\ntransaction"];
+    Update -> Updated [label="New state\nwith signatures"];
+    Updated -> Update [label="Another\nproposed tx"];
+    
+    // Commit/Settlement path
+    Active -> Commit [label="Unanimous\nagreement"];
+    Commit -> Settled [label="On-chain\ntransactions"];
+    
+    // Dispute path
+    Active -> Dispute [label="Conflicting\nstate claims"];
+    Dispute -> Disputed [label="Evidence\npresented"];
+    Disputed -> Settled [label="Resolved\nvia proofs"];
+    
+    // Closing path
+    {Active, Updated, Disputed, Settled} -> Close [label="Final\nsettlement"];
+    Close -> Closed [label="Assets\ndistributed"];
+    
+    // Participant funding
+    Participant1 -> Launch [ltail=cluster_participants, label="provide\nfunding cells"];
+    
+    // Optional operations
+    Active -> Join [label="New participant\nrequest"];
+    Join -> Active [label="Updated participants\n& funding"];
+    Active -> Leave [label="Participant\nwithdraws"];
+    Leave -> Active [label="Remaining\nparticipants"];
+    
+    // Blockchain interactions (more direct)
+    Commit -> BTCState [ltail=cluster_operations, lhead=cluster_blockchain, label="commit\ntransactions"];
+    Close -> ETHState [ltail=cluster_operations, lhead=cluster_blockchain, label="settlement\ntransactions"];
+    
+    // Event chain progression
+    State0 -> State1 [label="Tx1 + Proof1"];
+    State1 -> State2 [label="Tx2 + Proof2"];
+    State2 -> StateN [label="TxN + ProofN"];
+    
+    // Cell updates
+    Cell1 -> Cell2 [style=invis];
+    Cell2 -> Cell3 [style=invis];
+    
+    // Labels
+    label="\n\nCharms State Channel Lifecycle\nInspired by IOTX Transaction Model";
+    fontname="Arial Bold";
+    fontsize=16;
+    
+    // Cluster definitions - less important than the flow
+    subgraph cluster_participants {
+        label="Participants";
+        style=dashed;
+        color=grey;
+        Participant1; Participant2; ParticipantN;
+    }
+    
+    subgraph cluster_blockchain {
+        label="On-Chain State";
+        style=dashed;
+        color=grey;
+        BTCState; ETHState; ADAState;
+    }
+    
+    subgraph cluster_event_chain {
+        label="Hash-Linked Event Chain";
+        style=dashed;
+        color=grey;
+        State0; State1; State2; StateN;
+    }
+    
+    subgraph cluster_abstract_cell {
+        label="Abstract Cell Model";
+        style=dashed;
+        color=grey;
+        Cell1; Cell2; Cell3;
+    }
+}

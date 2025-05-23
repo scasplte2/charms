@@ -1,28 +1,52 @@
 # Zero-Knowledge Proofs in Charms
 
-This document explores how zero-knowledge proofs are used in the Charms protocol to enable secure and private programmability on Bitcoin.
+This document explores how zero-knowledge proofs enable secure and private programmability in the Charms protocol on Bitcoin.
 
 ## Introduction to Zero-Knowledge Proofs
 
 Zero-knowledge proofs (ZKPs) are cryptographic methods that allow one party (the prover) to prove to another party (the verifier) that a statement is true, without revealing any information beyond the validity of the statement itself.
 
-In the context of Charms, ZKPs are used to prove that a spell (a transformation of tokens, NFTs, or app state) was executed correctly according to the rules defined by its apps, without revealing the details of the execution.
+In Charms, ZKPs serve a crucial role: they prove that a spell (a transformation of tokens, NFTs, or app state) was executed correctly according to the rules defined by its apps, without revealing the details of the execution or requiring verifiers to re-execute the computation.
 
-## SP1 zkVM
+## The SP1 zkVM
 
-Charms uses the SP1 zkVM (Zero-Knowledge Virtual Machine) to execute RISC-V programs and generate zero-knowledge proofs of their correct execution. SP1 is:
+Charms uses the SP1 zkVM (Zero-Knowledge Virtual Machine) to execute RISC-V programs and generate zero-knowledge proofs of their correct execution. SP1 provides:
 
-- A zero-knowledge virtual machine that proves the correct execution of programs compiled for the RISC-V architecture
-- Capable of running programs written in Rust, C++, C, or any language for which a RISC-V compiler backend exists
-- Optimized for performance and efficiency
+- **RISC-V Compatibility**: Runs programs compiled for the widely-supported RISC-V architecture
+- **Language Flexibility**: Supports programs written in Rust, C++, C, or any language with a RISC-V compiler
+- **Performance Optimization**: Highly optimized for proof generation speed and verification efficiency
+- **Groth16 Output**: Produces compact Groth16 proofs for efficient on-chain verification
+
+## Recursive Proof System Architecture
+
+The heart of Charms' efficiency lies in its recursive proof system, which eliminates the need to traverse transaction history for verification.
+
+![Recursive Proof System](diagrams/img/recursive-proof-system.svg)
+*Figure 1: How recursive proofs enable O(1) verification without transaction graph traversal*
+
+### Key Innovation: No Transaction Graph Traversal
+
+Traditional blockchain verification requires checking the entire history of an asset to ensure its legitimacy. Charms replaces this with a single proof verification that recursively attests to all prerequisites.
+
+**Traditional Approach:**
+- Traverse entire transaction graph
+- Verify each transaction individually
+- O(n) verification time
+- High bandwidth usage
+
+**Charms Recursive Approach:**
+- Single proof verification
+- O(1) verification time
+- Constant bandwidth
+- Previous proofs embedded recursively
 
 ## Proof Generation Process
 
-The proof generation process in Charms involves several steps:
+The proof generation in Charms involves a sophisticated multi-stage pipeline:
 
-### 1. App Execution
+### Stage 1: App Contract Execution
 
-First, the app is executed in the SP1 zkVM:
+First, app contracts are executed in the SP1 zkVM:
 
 ```rust
 pub fn run(
@@ -48,11 +72,17 @@ pub fn run(
 }
 ```
 
-This execution generates a trace of the program's execution, which is used to create a zero-knowledge proof.
+This execution generates a trace of the program's execution, which forms the basis for proof generation.
 
-### 2. Proof Generation
+### Stage 2: Multi-Stage Proof Pipeline
 
-Next, a zero-knowledge proof is generated using the SP1 zkVM:
+The SP1 zkVM then generates proofs through a carefully orchestrated pipeline:
+
+1. **Core Proof**: Initial RISC-V execution trace proof
+2. **Compression**: Reduces proof size for efficiency
+3. **Shrinking**: Further optimization for minimal bandwidth
+4. **Wrapping**: Converts to BN254 elliptic curve format
+5. **Groth16 Conversion**: Final compact proof format
 
 ```rust
 fn prove(
@@ -118,50 +148,26 @@ fn prove(
 }
 ```
 
-This process involves several steps:
+### Stage 3: Spell Proof Generation
 
-1. **Core Proof**: A proof of the RISC-V execution
-2. **Compression**: Reducing the size of the proof
-3. **Shrinking**: Further optimization of the proof
-4. **Wrapping**: Converting the proof to a BN254 elliptic curve format
-5. **Groth16 Conversion**: Final conversion to a Groth16 proof
+The Charms Spell Checker program runs in the zkVM to generate spell proofs:
 
-### 3. Proof Serialization
+**Public Inputs:**
+- Spell VK (recursive spell verification key)
+- NormalizedSpell (the spell being checked)
 
-The proof is then serialized along with the spell:
+**Private Inputs:**
+- App contract proofs (proving app constraints are satisfied)
+- Prerequisite transactions (transactions that created input UTXOs)
 
-```rust
-let spell_data = util::write(&(&norm_spell, &proof))?;
-```
+The spell checker verifies:
+1. **Spell Well-Formed**: Version supported, apps listed correctly, no invalid indexes
+2. **App Contracts Satisfied**: All app predicates return true with valid inputs
+3. **Prerequisites Valid**: Input UTXOs are legitimate with valid spell proofs
 
-### 4. Bitcoin Integration
+## Proof Verification Process
 
-The serialized spell and proof are embedded in a Bitcoin transaction using Tapscript:
-
-```rust
-pub fn data_script(public_key: XOnlyPublicKey, data: &[u8]) -> ScriptBuf {
-    let builder = ScriptBuf::builder();
-    push_envelope(builder, data)
-        .push_slice(public_key.serialize())
-        .push_opcode(OP_CHECKSIG)
-        .into_script()
-}
-
-fn push_envelope(builder: Builder, data: &[u8]) -> Builder {
-    let mut builder = builder
-        .push_opcode(OP_FALSE)
-        .push_opcode(OP_IF)
-        .push_slice(b"spell");
-    for chunk in data.chunks(MAX_SCRIPT_ELEMENT_SIZE) {
-        builder = builder.push_slice::<&PushBytes>(chunk.try_into().unwrap());
-    }
-    builder.push_opcode(OP_ENDIF)
-}
-```
-
-## Proof Verification
-
-When a spell is extracted from a Bitcoin transaction, its proof is verified to ensure correctness:
+When a spell is extracted from a Bitcoin transaction, its proof is verified efficiently:
 
 ```rust
 pub fn extract_and_verify_spell(
@@ -199,62 +205,136 @@ pub fn extract_and_verify_spell(
 }
 ```
 
-This verification process ensures that the spell was executed correctly according to the rules defined by its apps.
+This verification process ensures that the spell was executed correctly according to all app constraints.
+
+## Special Case Optimizations
+
+Charms optimizes for common operations that don't require full zkVM execution:
+
+### Simple Token Transfers (tag='t')
+- **Condition**: Total input amount equals total output amount
+- **Optimization**: No proof generation needed
+- **Validation**: Simple arithmetic check
+
+### Simple NFT Transfers (tag='n')
+- **Condition**: NFT data remains unchanged during transfer
+- **Optimization**: No proof generation needed
+- **Validation**: Simple data comparison
+
+### Custom Apps
+- **Requirement**: Full zkVM execution with proof generation
+- **Use Case**: Any logic beyond simple transfers
+- **Flexibility**: Arbitrary programmable behavior
 
 ## Benefits of Zero-Knowledge Proofs in Charms
 
-Zero-knowledge proofs provide several benefits in the Charms protocol:
-
 ### 1. Privacy
 
-ZKPs allow for private computation while still ensuring correctness. This means that:
+ZKPs enable private computation while maintaining correctness:
 
-- The details of the computation are not revealed
-- Only the fact that the computation was performed correctly is verified
-- Sensitive information can be kept private
+- **Execution Details Hidden**: The specific computation steps remain private
+- **Input Privacy**: Private inputs (witness data) are never revealed
+- **Selective Disclosure**: Only necessary information is made public
 
 ### 2. Scalability
 
-ZKPs allow for complex computations to be performed off-chain, with only a compact proof being included in the Bitcoin transaction. This improves scalability by:
+ZKPs dramatically improve scalability by eliminating transaction graph traversal:
 
-- Reducing the amount of data that needs to be stored on the blockchain
-- Allowing for complex computations that would be impractical to perform on-chain
-- Enabling efficient verification of complex computations
+- **Constant Verification Time**: O(1) regardless of transaction history depth
+- **Minimal Bandwidth**: Only spell and proof data required
+- **Efficient Storage**: No need to store entire transaction histories
 
 ### 3. Programmability
 
-ZKPs enable complex programmability on Bitcoin without requiring changes to the Bitcoin protocol. This allows for:
+ZKPs enable complex programmability on Bitcoin without protocol changes:
 
-- Smart contract-like functionality on Bitcoin
-- Complex application logic that can be verified by anyone
-- Composable applications that can interact with each other
+- **Smart Contract Logic**: Arbitrary business logic can be implemented
+- **Composable Applications**: Multiple apps can interact within transactions
+- **Cross-Chain Compatibility**: Same apps work on different blockchains
 
 ### 4. Security
 
-ZKPs ensure that computations are performed correctly, providing strong security guarantees:
+ZKPs provide strong security guarantees:
 
-- Computations cannot be tampered with
-- Results cannot be falsified
-- The integrity of the system is maintained
+- **Computational Integrity**: Proofs ensure computations were performed correctly
+- **Tamper Resistance**: Proofs cannot be forged or modified
+- **Non-Interactive**: Verification doesn't require interaction with the prover
 
-## Groth16 Proof System
+## Performance Characteristics
 
-Charms uses the Groth16 zero-knowledge proof system, which is:
+### Client-Side Verification
 
-- Highly efficient for verification
-- Compact in terms of proof size
-- Well-suited for blockchain applications
+Charms is designed to be efficient enough for web and mobile applications:
 
-The Groth16 proof system requires a trusted setup, but once this setup is performed, it provides strong security guarantees and efficient verification.
+- **Web Browser Compatible**: Groth16 verification runs efficiently in browsers
+- **Mobile Friendly**: Minimal computational requirements for verification
+- **Offline Capable**: Verification doesn't require network access once data is available
+
+### Proof Generation
+
+While proof generation is more computationally intensive, it's optimized for practical use:
+
+- **Hardware Acceleration**: Supports GPU acceleration for faster proof generation
+- **Parallel Processing**: Multiple app proofs can be generated concurrently
+- **Incremental Updates**: Only changed apps need new proofs
+- **Caching**: Generated proofs can be cached and reused
+
+### Network Efficiency
+
+The recursive nature of proofs provides excellent network efficiency:
+
+- **Constant Proof Size**: Proof size doesn't grow with transaction depth
+- **Bandwidth Optimization**: Only new spell data needs to be transmitted
+- **CDN Friendly**: Proofs can be cached and distributed efficiently
+
+## The Groth16 Proof System
+
+Charms uses Groth16 as its final proof format due to several advantages:
+
+### Advantages of Groth16
+
+- **Compact Proofs**: Very small proof size (around 200 bytes)
+- **Fast Verification**: Constant-time verification regardless of circuit size
+- **Mature Technology**: Well-tested and widely adopted
+- **Hardware Support**: Efficient implementation on various platforms
+
+### Trusted Setup
+
+Groth16 requires a trusted setup, but this is handled transparently:
+
+- **Per-Circuit Setup**: Each app circuit has its own trusted setup
+- **Open Source Process**: Setup ceremonies are conducted openly
+- **Verification**: Setup parameters can be independently verified
+- **Future Migration**: Protocol designed to support other proof systems
 
 ## Future Directions
 
-The Charms protocol could potentially support other zero-knowledge proof systems in the future, such as:
+The Charms protocol is designed to adapt to advances in zero-knowledge technology:
 
-- Plonk: A universal and updateable trusted setup
-- Halo2: A recursive proof system without a trusted setup
-- Nova: A proof system optimized for recursive proofs
+### Alternative Proof Systems
 
-These systems could provide different trade-offs in terms of setup requirements, proof size, and verification efficiency.
+Future versions could support:
 
-In the next document, we'll explore how Charms can be extended with a topos-based state channel framework.
+- **PLONK**: Universal and updateable trusted setup
+- **Halo2**: Recursive proof system without trusted setup
+- **Nova**: Optimized for recursive proofs
+- **STARKs**: Post-quantum security without trusted setup
+
+### Performance Improvements
+
+Ongoing optimizations include:
+
+- **Circuit Optimization**: More efficient constraint systems
+- **Proof Aggregation**: Combining multiple proofs for better efficiency
+- **Hardware Acceleration**: Specialized hardware for proof generation
+- **Algorithm Advances**: Leveraging new research in ZK technology
+
+### Integration Enhancements
+
+Future developments may include:
+
+- **Light Client Integration**: Better support for mobile and web clients
+- **Cross-Chain Verification**: More efficient cross-chain proof verification
+- **Privacy Features**: Enhanced privacy through advanced ZK techniques
+
+The next document explores how Charms can be extended with advanced frameworks for state channels and cross-chain operations.

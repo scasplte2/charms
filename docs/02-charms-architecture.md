@@ -4,7 +4,7 @@ This document provides an overview of the Charms architecture, explaining how th
 
 ## System Overview
 
-The Charms system consists of several key components:
+The Charms system consists of several key components that work together to enable programmable assets on Bitcoin:
 
 1. **Charms SDK**: Provides the framework for developing apps
 2. **Charms Client**: Handles interaction with the Bitcoin blockchain
@@ -12,7 +12,8 @@ The Charms system consists of several key components:
 4. **Charms Spell Checker**: Verifies the correctness of spells
 5. **SP1 zkVM**: Executes RISC-V programs and generates zero-knowledge proofs
 
-These components work together to enable the creation, execution, and verification of spells on the Bitcoin blockchain.
+![Recursive Proof System](diagrams/img/recursive-proof-system.svg)
+*Figure 1: How the recursive proof system enables efficient verification*
 
 ## Component Architecture
 
@@ -20,104 +21,189 @@ These components work together to enable the creation, execution, and verificati
 
 The Charms SDK (`charms-sdk`) provides the framework for developing apps. It includes:
 
-- A macro system for defining app entrypoints
-- Integration with the SP1 zkVM
+- A macro system for defining app entrypoints using `charms_sdk::main!`
+- Integration with the SP1 zkVM for proof generation
 - Utilities for handling data serialization and deserialization
+- Type-safe interfaces for app development
 
-The SDK allows developers to write apps in Rust (or any language that compiles to RISC-V) and have them executed in the SP1 zkVM.
+The SDK allows developers to write apps in Rust that compile to RISC-V binaries for execution in the SP1 zkVM.
 
-### 2. Charms Client
+### 2. App Contract Execution
 
-The Charms Client (`charms-client`) handles interaction with the Bitcoin blockchain. It:
+Apps are the core programmable logic in Charms. They define how assets can be created, transferred, and transformed.
 
-- Extracts and verifies spells from Bitcoin transactions
-- Normalizes spells for processing
-- Provides utilities for working with Bitcoin transactions
+![App Execution Flow](diagrams/img/app-execution-flow.svg)
+*Figure 2: How app contracts are executed in the SP1 zkVM*
 
-### 3. Charms Data
+#### App Contract Signature
 
-The Charms Data (`charms-data`) component defines the data structures used in the system:
+All Charms apps implement the same fundamental signature:
 
-- `App`: Represents an application with a tag, identity, and verification key
-- `Transaction`: Represents a transaction involving Charms
-- `Charms`: Collections of tokens, NFTs, or app state
-- `Data`: Generic data structure for storing app-specific data
+```rust
+fn app_contract(app: &App, tx: &Transaction, x: &Data, w: &Data) -> bool
+```
 
-### 4. Charms Spell Checker
+Where:
+- `app`: The app definition (tag, identity, verification key)
+- `tx`: The complete transaction context
+- `x`: Public input data (on-chain)
+- `w`: Private input data (off-chain witness)
 
-The Charms Spell Checker (`charms-spell-checker`) verifies the correctness of spells. It:
+#### Special Cases
 
-- Checks if a spell is well-formed
-- Verifies that the spell satisfies the constraints of its apps
-- Ensures that the spell's inputs and outputs are valid
+The system optimizes for common operations:
+- **Token transfers** (tag='t'): Simple balance validation without full zkVM execution
+- **NFT transfers** (tag='n'): Ownership transfer validation without proof generation
+- **Custom apps**: Full zkVM execution with proof generation for arbitrary logic
 
-### 5. SP1 zkVM
+### 3. Charms Client
 
-The SP1 zkVM is a zero-knowledge virtual machine that:
+The Charms Client (`charms-client`) handles interaction with the Bitcoin blockchain:
 
-- Executes RISC-V programs
-- Generates zero-knowledge proofs of correct execution
-- Supports various proof systems, including Groth16
+- **Spell Extraction**: Parses spells from Bitcoin transaction Taproot witnesses
+- **Proof Verification**: Verifies Groth16 proofs using the appropriate verification keys
+- **UTXO Management**: Tracks and manages UTXOs containing charms
+- **Cross-Chain Support**: Handles C3T protocol operations
 
-## Data Flow
+### 4. Data Structures
 
-The data flow in the Charms system follows these steps:
+The core data structures enable the flexible composition of programmable assets:
 
-1. **App Development**:
-   - Developers create apps using the Charms SDK
-   - Apps are compiled to RISC-V binaries
+#### App Structure
+```rust
+pub struct App {
+    pub tag: char,        // 't' for tokens, 'n' for NFTs, or custom
+    pub identity: B32,    // Unique identifier for the asset
+    pub vk: B32,         // Verification key hash
+}
+```
 
-2. **Spell Creation**:
-   - Users create spells that reference apps
-   - Spells define transformations of Charms
+#### Charms Structure
+```rust
+pub type Charms = BTreeMap<App, Data>;
+```
 
-3. **Proof Generation**:
-   - The system executes the app in the SP1 zkVM
-   - The zkVM generates a zero-knowledge proof of correct execution
+This map structure allows multiple apps and their associated data to coexist in a single UTXO, enabling powerful composability patterns.
 
-4. **Bitcoin Integration**:
-   - The spell and its proof are embedded in a Bitcoin transaction
-   - The transaction is broadcast to the Bitcoin network
+## Transaction Structure and Spell Processing
 
-5. **Verification**:
-   - Other participants extract the spell from the transaction
-   - They verify the zero-knowledge proof to ensure correctness
+Charms extends Bitcoin's UTXO model without requiring any changes to the Bitcoin protocol itself.
 
-## Transaction Structure
+### Spell Embedding
 
-Charms uses a two-transaction structure for embedding spells in Bitcoin:
+Spells are embedded in Bitcoin transactions using Taproot witnesses:
 
-1. **Commit Transaction**:
-   - Creates a Taproot output containing the spell
-   - Uses a Tapscript to encode the spell data
+```
+OP_FALSE
+OP_IF
+  OP_PUSH "spell"
+  OP_PUSH $spell_data
+  OP_PUSH $proof_data
+OP_ENDIF
+```
 
-2. **Spell Transaction**:
-   - Spends the commit transaction
-   - Executes the spell and transforms Charms
+This creates a no-op script that doesn't affect Bitcoin's execution but carries the spell data.
 
-This structure allows for complex programmability while maintaining compatibility with the Bitcoin protocol.
+### Normalization Process
 
-## Proof System
+Spells are normalized for efficient processing:
 
-Charms uses the Groth16 zero-knowledge proof system for verifying the correctness of spells. The proof generation process involves:
+1. **App Indexing**: Apps are assigned integer indices to reduce data size
+2. **Input Inheritance**: Transaction inputs are inherited from the Bitcoin transaction
+3. **Output Optimization**: Only necessary output data is included
 
-1. **Core Proof**: A proof of the RISC-V execution
-2. **Compression**: Reducing the size of the proof
-3. **Shrinking**: Further optimization of the proof
-4. **Wrapping**: Converting the proof to a BN254 elliptic curve format
-5. **Groth16 Conversion**: Final conversion to a Groth16 proof
+## Proof System Architecture
 
-This multi-step process ensures that proofs are compact and efficient to verify.
+The recursive proof system is one of Charms' key innovations, enabling efficient verification without traversing the entire transaction history.
+
+### Proof Generation Pipeline
+
+The SP1 zkVM generates proofs through a multi-stage process:
+
+1. **Core Proof**: Initial RISC-V execution trace
+2. **Compression**: Reduce proof size for efficiency
+3. **Shrinking**: Further optimization for minimal bandwidth
+4. **Wrapping**: Convert to BN254 elliptic curve format
+5. **Groth16 Conversion**: Final compact proof format
+
+### Recursive Verification
+
+Each spell proof attests to three critical properties:
+
+1. **Well-Formed Spell**: The spell structure is valid and properly formatted
+2. **App Contract Satisfaction**: All referenced app contracts return `true`
+3. **Prerequisite Validity**: All input UTXOs have valid spell proofs
+
+This recursive structure means verifying a single Groth16 proof is sufficient to validate the entire chain of custody for any charm.
+
+## Cross-Chain Architecture
+
+Charms supports cross-chain transfers through the C3T (Charms Cross-Chain Transfer) protocol.
+
+![Cross-Chain Transfer Process](diagrams/img/cross-chain-transfer.svg)
+*Figure 3: Complete C3T protocol for cross-chain asset movement*
+
+### Key Design Principles
+
+1. **Chain Agnostic Apps**: The same app contracts work on any supported blockchain
+2. **Placeholder UTXOs**: Target chain UTXOs are created before beaming
+3. **Block Hash Security**: Include source chain block hashes to prevent alternative history attacks
+4. **Atomic Claims**: Assets can only be claimed once on the target chain
+
+### Data Structure Extensions
+
+The C3T protocol adds one optional field to the standard charm output structure:
+
+```rust
+pub struct NormalizedCharmsOutput {
+    pub charms: NormalizedCharms,
+    pub outer_utxo_id: Option<UtxoId>,  // Points to target chain UTXO
+}
+```
 
 ## Security Model
 
-The Charms security model relies on several key properties:
+The Charms security model combines Bitcoin's proven security with zero-knowledge cryptography:
 
-- **Bitcoin Security**: Leverages Bitcoin's security for transaction finality
-- **Zero-Knowledge Proofs**: Ensures correctness of spell execution
-- **Taproot Privacy**: Uses Taproot to enhance privacy
-- **App Verification**: Verifies that apps satisfy their constraints
+### Bitcoin Layer Security
+- **Double-Spend Prevention**: Leverages Bitcoin's consensus mechanism
+- **Transaction Finality**: Inherits Bitcoin's settlement guarantees
+- **Decentralization**: No additional trust assumptions beyond Bitcoin nodes
 
-By combining these properties, Charms provides a secure and private platform for programmable tokens and NFTs on Bitcoin.
+### Cryptographic Security
+- **Proof Integrity**: Groth16 proofs ensure computational integrity
+- **App Isolation**: Apps cannot interfere with each other's logic
+- **Recursive Verification**: Eliminates need for trusted indexers or validators
 
-In the next document, we'll explore spells and apps in more detail.
+### Cross-Chain Security
+- **Block Hash Verification**: Prevents alternative history attacks
+- **Proof Aggregation**: Recursive proofs scale to arbitrary transaction depths
+- **No Bridge Trust**: C3T requires no additional trusted parties
+
+## Performance Characteristics
+
+### Client-Side Verification
+- **O(1) Verification**: Constant time regardless of transaction history depth
+- **Minimal Bandwidth**: Only spell and proof data required
+- **Web/Mobile Friendly**: Efficient enough for browser and mobile applications
+
+### Proof Generation
+- **Parallel Processing**: Multiple app proofs can be generated concurrently
+- **Incremental Updates**: Only changed apps need new proofs
+- **Hardware Acceleration**: Supports GPU acceleration for proof generation
+
+## Developer Experience
+
+The architecture prioritizes developer experience and familiar patterns:
+
+### Standard Languages
+- **Rust**: Primary development language with full tooling support
+- **Future ISA**: Planned expansion of instruction set support to enable more languages
+- **No Domain-Specific Language**: Use existing skills and tooling
+
+### Familiar Patterns
+- **Function Signatures**: Simple boolean return values for app contracts
+- **Error Handling**: Standard Rust error handling patterns
+- **Testing**: Built-in testing framework for app development
+
+The next document explores spells and apps in detail, showing how developers can build applications using this architecture.

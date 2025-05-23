@@ -1,0 +1,119 @@
+digraph UTXOCharmLifecycle {
+    rankdir=LR;
+    nodesep=1.0;
+    ranksep=1.5;
+    splines=true;
+    node [shape=box, style=filled, fontname="Arial", margin="0.3,0.2"];
+    edge [fontname="Arial", fontsize=11, penwidth=1.5];
+    
+    // UTXO States
+    subgraph cluster_states {
+        label="UTXO States";
+        style=rounded;
+        color="#4B0082";
+        bgcolor="#F8F8FF";
+        fontsize=14;
+        
+        Unspent [label="Unspent UTXO\nwith Charms", fillcolor="#98FB98", fontsize=12];
+        Spent [label="Spent UTXO\n(historical)", fillcolor="#FFB6C1", fontsize=12];
+    }
+    
+    // Creation Process
+    subgraph cluster_creation {
+        label="UTXO Creation";
+        style=rounded;
+        color="#2E8B57";
+        bgcolor="#F0FFF0";
+        fontsize=14;
+        
+        Genesis [label="Genesis Transaction\n(minting/creation)", fillcolor="#90EE90", fontsize=12];
+        NewUTXO [label="New UTXO Created\nwith Initial Charms", fillcolor="#98FB98", fontsize=12];
+    }
+    
+    // Spending Process
+    subgraph cluster_spending {
+        label="UTXO Spending & Transformation";
+        style=rounded;
+        color="#DC143C";
+        bgcolor="#FFF0F0";
+        fontsize=14;
+        
+        SpendTx [label="Spending Transaction\n(with new spell)", fillcolor="#FFB6C1", fontsize=12];
+        Transform [label="Charm Transformation\n(via app contracts)", fillcolor="#F0A0A0", fontsize=12];
+        OutputUTXOs [label="Output UTXOs\nwith Transformed Charms", fillcolor="#FFA07A", fontsize=12];
+    }
+    
+    // String of Charms Examples
+    subgraph cluster_examples {
+        label="String of Charms Examples";
+        style=rounded;
+        color="#FF8C00";
+        bgcolor="#FFF8DC";
+        fontsize=14;
+        
+        // Simple UTXO
+        SimpleUTXO [label="Simple UTXO:\n• TokenApp → 100 units", fillcolor="#FFE4B5", fontsize=11];
+        
+        // Complex UTXO
+        ComplexUTXO [label="Complex UTXO:\n• TokenApp → 50 units\n• NFTApp → {id: 123, metadata}\n• DEXApp → {limit_order}", fillcolor="#DEB887", fontsize=11];
+        
+        // Cross-chain UTXO
+        CrossChainUTXO [label="Cross-Chain UTXO:\n• TokenApp → 25 units\n• outer_utxo_id → cardano_utxo", fillcolor="#F4A460", fontsize=11];
+    }
+    
+    // Composability Examples
+    subgraph cluster_composability {
+        label="Composability Patterns";
+        style=rounded;
+        color="#4169E1";
+        bgcolor="#F0F8FF";
+        fontsize=14;
+        
+        NFTWithToken [label="NFT Managing Token:\nNFT state tracks\nremaining supply", fillcolor="#87CEEB", fontsize=11];
+        OrderBook [label="DEX Order Book:\nOrder references\nspecific tokens", fillcolor="#87CEFA", fontsize=11];
+        GameAsset [label="Gaming Asset:\nNFT with token rewards\nand upgrade state", fillcolor="#6495ED", fontsize=11];
+    }
+    
+    // Lifecycle Flow
+    Genesis -> NewUTXO [label="creates"];
+    NewUTXO -> Unspent [label="becomes"];
+    Unspent -> SpendTx [label="spent by"];
+    SpendTx -> Transform [label="executes"];
+    Transform -> OutputUTXOs [label="produces"];
+    OutputUTXOs -> Unspent [label="new UTXOs\nbecome", style=dashed];
+    Unspent -> Spent [label="when spent", style=dotted];
+    
+    // Examples Flow
+    NewUTXO -> SimpleUTXO [style=dashed, color="#666666", label="example"];
+    Transform -> ComplexUTXO [style=dashed, color="#666666", label="can create"];
+    Transform -> CrossChainUTXO [style=dashed, color="#666666", label="can create"];
+    
+    // Composability Flow
+    ComplexUTXO -> NFTWithToken [style=dotted, color="#0000FF", label="enables"];
+    ComplexUTXO -> OrderBook [style=dotted, color="#0000FF", label="enables"];
+    ComplexUTXO -> GameAsset [style=dotted, color="#0000FF", label="enables"];
+    
+    // Transformation Examples
+    TransformExample1 [label="Transformation Example 1:\nToken Split:\n100 tokens → 60 + 40 tokens", shape=note, fillcolor="#FFFACD", fontsize=10];
+    TransformExample2 [label="Transformation Example 2:\nNFT Update:\nNFT{level: 1} → NFT{level: 2}", shape=note, fillcolor="#FFFACD", fontsize=10];
+    TransformExample3 [label="Transformation Example 3:\nDEX Trade:\nTokenA + Order → TokenB", shape=note, fillcolor="#FFFACD", fontsize=10];
+    
+    Transform -> TransformExample1 [style=dashed, color="#8B4513"];
+    Transform -> TransformExample2 [style=dashed, color="#8B4513"];
+    Transform -> TransformExample3 [style=dashed, color="#8B4513"];
+    
+    // Key Properties
+    Properties [label="Key Properties:\n• UTXOs are atomic units\n• Multiple charms per UTXO\n• Transformations via app contracts\n• Composable interactions\n• Bitcoin-secured ownership", shape=ellipse, fillcolor="#E6E6FA", fontsize=10];
+    
+    Unspent -> Properties [style=dotted, color="#888888"];
+    
+    // Validation Rules
+    ValidationRules [label="Validation Rules:\n• App contracts must approve\n• Spell proof must verify\n• Bitcoin transaction valid\n• No double-spending", shape=diamond, fillcolor="#FFE4E1", fontsize=10];
+    
+    SpendTx -> ValidationRules [style=dotted, color="#DC143C"];
+    
+    label="\nUTXO Charm Lifecycle\nCreation, Transformation, and Composability";
+    fontname="Arial Bold";
+    fontsize=16;
+    labelloc="t";
+}

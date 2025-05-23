@@ -1,0 +1,136 @@
+sequenceDiagram
+    participant Alice as Alice (Bitcoin)
+    participant BTCClient as Bitcoin Client
+    participant BTC as Bitcoin Network
+    participant DEX as Cross-Chain DEX
+    participant ADA as Cardano Network
+    participant ADAClient as Cardano Client
+    participant Bob as Bob (Cardano)
+    participant zkVM as SP1 zkVM
+    
+    Note over Alice, zkVM: Multi-User Cross-Chain Trade: Alice (BTC) ↔ Bob (Cardano)
+    
+    %% Setup Phase
+    rect rgb(248, 248, 255)
+        Note over Alice, Bob: Phase 1: Initial Setup
+        Note over Alice, BTCClient: Alice has 100 AliceCoin on Bitcoin
+        Note over Bob, ADAClient: Bob has 50 BobToken on Cardano
+        Note over DEX: Cross-chain DEX supports both chains
+    end
+    
+    %% Alice Creates Order
+    rect rgb(255, 248, 220)
+        Note over Alice, DEX: Phase 2: Alice Creates Cross-Chain Order
+        
+        Alice->>BTCClient: Create DEX order: 80 AliceCoin → 40 BobToken
+        Note right of Alice: Willing to trade at 2:1 ratio
+        
+        BTCClient->>BTCClient: Create order spell with DEX app
+        Note right of BTCClient: Order UTXO: AliceCoin + DEX order data
+        BTCClient->>zkVM: Generate order proof
+        zkVM-->>BTCClient: Groth16 proof
+        BTCClient->>BTC: Broadcast order transaction
+        BTC-->>BTCClient: Order created on Bitcoin
+        
+        BTCClient->>DEX: Register cross-chain order
+        DEX-->>BTCClient: Order registered (order_id: btc_order_123)
+        BTCClient-->>Alice: Order active: 80 AliceCoin for 40 BobToken
+    end
+    
+    %% Bob Discovers and Accepts
+    rect rgb(240, 248, 255)
+        Note over Bob, DEX: Phase 3: Bob Discovers and Accepts Order
+        
+        Bob->>DEX: Browse available orders
+        DEX-->>Bob: Shows Alice's order: 80 AliceCoin ← 40 BobToken
+        
+        Bob->>ADAClient: Accept order: trade 40 BobToken for 80 AliceCoin
+        Note right of Bob: Agrees to 2:1 ratio
+        
+        ADAClient->>ADAClient: Create acceptance spell
+        Note right of ADAClient: References Alice's Bitcoin order
+        ADAClient->>zkVM: Generate acceptance proof
+        zkVM-->>ADAClient: Groth16 proof
+        ADAClient->>ADA: Broadcast acceptance transaction
+        ADA-->>ADAClient: Acceptance recorded on Cardano
+        
+        ADAClient->>DEX: Submit trade acceptance
+        DEX-->>ADAClient: Trade matched (trade_id: cross_123)
+    end
+    
+    %% Cross-Chain Settlement
+    rect rgb(240, 255, 240)
+        Note over Alice, zkVM: Phase 4: Cross-Chain Settlement Process
+        
+        DEX->>DEX: Initiate atomic settlement
+        Note over DEX: Coordinates cross-chain asset transfer
+        
+        par Alice's Side (Bitcoin → Cardano)
+            DEX->>ADAClient: Create placeholder for Alice's AliceCoin
+            ADAClient->>ADA: Create placeholder UTXO
+            ADA-->>ADAClient: Placeholder ready (cardano_alice_utxo)
+            
+            DEX->>BTCClient: Execute Alice's side of trade
+            BTCClient->>BTCClient: Create settlement spell
+            Note right of BTCClient: Beam 80 AliceCoin to Cardano placeholder
+            BTCClient->>zkVM: Generate settlement proof
+            zkVM-->>BTCClient: Groth16 proof with outer_utxo_id
+            BTCClient->>BTC: Broadcast Alice's settlement
+            BTC-->>BTCClient: 80 AliceCoin beamed to Cardano
+            
+            BTCClient->>ADAClient: Notify Alice's assets available
+            ADAClient->>ADAClient: Create claim spell for Alice
+            ADAClient->>zkVM: Generate claim proof
+            zkVM-->>ADAClient: Groth16 proof
+            ADAClient->>ADA: Claim Alice's 80 AliceCoin
+            ADA-->>ADAClient: Alice now has 80 AliceCoin on Cardano
+        
+        and Bob's Side (Cardano → Bitcoin)
+            DEX->>BTCClient: Create placeholder for Bob's BobToken
+            BTCClient->>BTC: Create placeholder UTXO
+            BTC-->>BTCClient: Placeholder ready (bitcoin_bob_utxo)
+            
+            DEX->>ADAClient: Execute Bob's side of trade
+            ADAClient->>ADAClient: Create settlement spell
+            Note right of ADAClient: Beam 40 BobToken to Bitcoin placeholder
+            ADAClient->>zkVM: Generate settlement proof
+            zkVM-->>ADAClient: Groth16 proof with outer_utxo_id
+            ADAClient->>ADA: Broadcast Bob's settlement
+            ADA-->>ADAClient: 40 BobToken beamed to Bitcoin
+            
+            ADAClient->>BTCClient: Notify Bob's assets available
+            BTCClient->>BTCClient: Create claim spell for Bob
+            BTCClient->>zkVM: Generate claim proof
+            zkVM-->>BTCClient: Groth16 proof
+            BTCClient->>BTC: Claim Bob's 40 BobToken
+            BTC-->>BTCClient: Bob now has 40 BobToken on Bitcoin
+        end
+        
+        DEX-->>Alice: Trade completed! You received 40 BobToken on Bitcoin
+        DEX-->>Bob: Trade completed! You received 80 AliceCoin on Cardano
+    end
+    
+    %% Post-Trade State
+    rect rgb(255, 240, 240)
+        Note over Alice, Bob: Phase 5: Post-Trade State & Verification
+        
+        Alice->>BTCClient: Check balance
+        BTCClient-->>Alice: Bitcoin: 20 AliceCoin + 40 BobToken
+        
+        Bob->>ADAClient: Check balance
+        ADAClient-->>Bob: Cardano: 10 BobToken + 80 AliceCoin
+        
+        Note over Alice, Bob: ✨ Cross-chain atomic trade complete! ✨
+        Note over DEX: DEX facilitated trustless cross-chain exchange
+        Note over zkVM: All operations verified with zero-knowledge proofs
+    end
+    
+    %% Optional: Further Operations
+    rect rgb(248, 255, 248)
+        Note over Alice, Bob: Phase 6: Optional Further Operations
+        
+        Alice->>BTCClient: Could move BobToken back to Cardano for DeFi
+        Bob->>ADAClient: Could move AliceCoin back to Bitcoin for storage
+        
+        Note over Alice, zkVM: Assets retain full programmability<br/>across all supported chains
+    end

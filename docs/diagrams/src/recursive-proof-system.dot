@@ -1,0 +1,138 @@
+digraph RecursiveProofSystem {
+    rankdir=TB;
+    nodesep=0.8;
+    ranksep=1.2;
+    splines=true;
+    node [shape=box, style=filled, fontname="Arial", margin="0.3,0.2"];
+    edge [fontname="Arial", fontsize=11, penwidth=1.5];
+    
+    // SP1 zkVM Proof Generation Pipeline
+    subgraph cluster_proof_generation {
+        label="SP1 zkVM Proof Generation Pipeline";
+        style=rounded;
+        color="#8B008B";
+        bgcolor="#F8F8FF";
+        fontsize=14;
+        
+        CoreProof [label="Core Proof\n(RISC-V execution trace)", fillcolor="#DDA0DD", fontsize=12];
+        CompressedProof [label="Compressed Proof\n(reduce proof size)", fillcolor="#DA70D6", fontsize=12];
+        ShrinkProof [label="Shrink Proof\n(further optimization)", fillcolor="#BA55D3", fontsize=12];
+        WrapProof [label="Wrap Proof\n(BN254 elliptic curve)", fillcolor="#9932CC", fontsize=12];
+        Groth16Proof [label="Groth16 Proof\n(final compact form)", fillcolor="#8B008B", fontsize=12];
+    }
+    
+    // Recursive Verification Structure
+    subgraph cluster_recursive {
+        label="Recursive Verification Structure";
+        style=rounded;
+        color="#2E8B57";
+        bgcolor="#F0FFF0";
+        fontsize=14;
+        
+        CurrentSpell [label="Current Spell\n(being verified)", fillcolor="#98FB98", fontsize=12];
+        AppContracts [label="App Contract Proofs\n(satisfy constraints)", fillcolor="#90EE90", fontsize=12];
+        PrereqTx1 [label="Prerequisite Tx 1\nSpell Proof", fillcolor="#87CEEB", fontsize=12];
+        PrereqTx2 [label="Prerequisite Tx 2\nSpell Proof", fillcolor="#87CEEB", fontsize=12];
+        PrereqTxN [label="Prerequisite Tx N\nSpell Proof", fillcolor="#87CEEB", fontsize=12];
+    }
+    
+    // Traditional vs Recursive Comparison
+    subgraph cluster_comparison {
+        label="Traditional vs Recursive Verification";
+        style=rounded;
+        color="#DC143C";
+        bgcolor="#FFF0F0";
+        fontsize=14;
+        
+        Traditional [label="Traditional Approach:\n• Traverse entire tx graph\n• Verify each transaction\n• O(n) verification time\n• High bandwidth usage", fillcolor="#FFB6C1", fontsize=11];
+        
+        Recursive [label="Recursive Approach:\n• Single proof verification\n• O(1) verification time\n• Constant bandwidth\n• Previous proofs embedded", fillcolor="#98FB98", fontsize=11];
+    }
+    
+    // Proof Contents
+    subgraph cluster_contents {
+        label="Spell Proof Contents";
+        style=rounded;
+        color="#4169E1";
+        bgcolor="#F0F8FF";
+        fontsize=14;
+        
+        WellFormed [label="Spell Well-Formed\n• Version is supported\n• Apps are listed correctly\n• No invalid indexes", fillcolor="#87CEEB", fontsize=12];
+        AppSatisfied [label="App Contracts Satisfied\n• All app predicates return true\n• Public/private inputs valid\n• State transitions valid", fillcolor="#87CEFA", fontsize=12];
+        PrereqValid [label="Prerequisites Valid\n• Input UTXOs legitimate\n• Previous spell proofs verify\n• No double-spending", fillcolor="#6495ED", fontsize=12];
+    }
+    
+    // Verification Process
+    subgraph cluster_verification {
+        label="Client-Side Verification Process";
+        style=rounded;
+        color="#FF8C00";
+        bgcolor="#FFF8DC";
+        fontsize=14;
+        
+        ExtractSpell [label="Extract Spell\nfrom Bitcoin Tx", fillcolor="#FFE4B5", fontsize=12];
+        ParseProof [label="Parse Groth16 Proof\nfrom witness data", fillcolor="#DEB887", fontsize=12];
+        VerifyProof [label="Verify Proof\n(single operation)", fillcolor="#F4A460", fontsize=12];
+        ValidateCharms [label="Charms are Valid\n(can be spent)", fillcolor="#CD853F", fontsize=12];
+    }
+    
+    // Proof Generation Flow
+    CoreProof -> CompressedProof [label="compress"];
+    CompressedProof -> ShrinkProof [label="shrink"];
+    ShrinkProof -> WrapProof [label="wrap"];
+    WrapProof -> Groth16Proof [label="convert"];
+    
+    // Recursive Structure
+    CurrentSpell -> AppContracts [label="verifies"];
+    CurrentSpell -> PrereqTx1 [label="verifies"];
+    CurrentSpell -> PrereqTx2 [label="verifies"];
+    CurrentSpell -> PrereqTxN [label="verifies", style=dashed];
+    
+    // Proof Contents Flow
+    Groth16Proof -> WellFormed [label="attests to"];
+    Groth16Proof -> AppSatisfied [label="attests to"];
+    Groth16Proof -> PrereqValid [label="attests to"];
+    
+    // Verification Flow
+    ExtractSpell -> ParseProof [label="extract data"];
+    ParseProof -> VerifyProof [label="single check"];
+    VerifyProof -> ValidateCharms [label="if proof valid"];
+    
+    // Key Innovation
+    Innovation [label="Key Innovation:\nNo Transaction Graph Traversal\n\nInstead of checking entire history,\nverify one proof that recursively\nattests to all prerequisites", shape=ellipse, fillcolor="#FFFFE0", fontsize=11];
+    
+    Recursive -> Innovation [style=dotted, color="#2E8B57"];
+    
+    // Performance Benefits
+    Benefits [label="Performance Benefits:\n• O(1) verification time\n• Constant proof size\n• Minimal bandwidth\n• Scalable to any depth\n• Web/mobile friendly", shape=diamond, fillcolor="#E6E6FA", fontsize=11];
+    
+    VerifyProof -> Benefits [style=dotted, color="#FF8C00"];
+    
+    // zkVM Program Structure
+    subgraph cluster_program {
+        label="Charms Spell Checker (zkVM Program)";
+        style=rounded;
+        color="#8B4513";
+        bgcolor="#F5F5DC";
+        fontsize=14;
+        
+        SpellChecker [label="charms-spell-checker\n(RISC-V binary)", fillcolor="#DEB887", fontsize=12];
+        PublicInputs [label="Public Inputs:\n• Spell VK\n• NormalizedSpell", fillcolor="#F4A460", fontsize=11];
+        PrivateInputs [label="Private Inputs:\n• App contract proofs\n• Prerequisite transactions", fillcolor="#D2B48C", fontsize=11];
+    }
+    
+    // Program Flow
+    PublicInputs -> SpellChecker [label="provides"];
+    PrivateInputs -> SpellChecker [label="provides"];
+    SpellChecker -> CoreProof [label="generates"];
+    
+    // Special Cases
+    SpecialCases [label="Special Cases (No Proof Needed):\n• Simple token transfers (tag='t')\n• Simple NFT transfers (tag='n')\n• Total input amount = total output amount", shape=note, fillcolor="#FFFACD", fontsize=10];
+    
+    AppContracts -> SpecialCases [style=dashed, color="#666666"];
+    
+    label="\nRecursive Proof System Architecture\nEfficient Verification Without Transaction Graph Traversal";
+    fontname="Arial Bold";
+    fontsize=16;
+    labelloc="t";
+}

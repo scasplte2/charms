@@ -1,0 +1,131 @@
+digraph EventChainInteraction {
+    // Layout settings
+    rankdir=TB;
+    nodesep=0.8;
+    ranksep=1.2;
+    splines=true;
+    node [shape=box, style=filled, fontname="Arial", margin="0.3,0.2"];
+    edge [fontname="Arial", fontsize=10, penwidth=1.5, labeldistance=2.0];
+
+    // State Channel Operations (from main diagram)
+    subgraph cluster_lifecycle {
+        label="State Channel Lifecycle Operations";
+        style=rounded;
+        color="#333333";
+        bgcolor="#f9f9f9";
+        fontsize=14;
+        
+        UpdateOp [label="Update Operation\n(validateTx, applyTx, sign)", shape=ellipse, fillcolor="#FFA07A", fontsize=12];
+        JoinOp [label="Join Operation\n(addFunding)", shape=ellipse, fillcolor="#FFA07A", fontsize=12];
+        LeaveOp [label="Leave Operation\n(withdraw)", shape=ellipse, fillcolor="#FFA07A", fontsize=12];
+        CommitOp [label="Commit Operation\n(generateProof)", shape=ellipse, fillcolor="#FFA07A", fontsize=12];
+    }
+
+    // Event Chain States - horizontal progression
+    subgraph cluster_event_chain {
+        label="Hash-Linked Event Chain";
+        style=rounded;
+        color="#2F4F4F";
+        bgcolor="#f0f8ff";
+        fontsize=14;
+        rank=same;
+        
+        State0 [label="State 0\n(Genesis)\nHash: 0x000...", shape=circle, fillcolor="#FFFACD", fontsize=11, width=1.5];
+        State1 [label="State 1\nTx: Join P1\nHash: 0xabc...", shape=circle, fillcolor="#FFFACD", fontsize=11, width=1.5];
+        State2 [label="State 2\nTx: Update S1\nHash: 0xdef...", shape=circle, fillcolor="#FFFACD", fontsize=11, width=1.5];
+        State3 [label="State 3\nTx: Join P2\nHash: 0x123...", shape=circle, fillcolor="#FFFACD", fontsize=11, width=1.5];
+        StateN [label="State N\nTx: Commit\nHash: 0xfff...", shape=circle, fillcolor="#FFFACD", fontsize=11, width=1.5];
+    }
+
+    // Multiple Event Chains (showing parallel chains)
+    subgraph cluster_chain_btc {
+        label="Bitcoin Event Chain";
+        style=rounded;
+        color="#FF8C00";
+        bgcolor="#fff8dc";
+        fontsize=12;
+        
+        BTCState0 [label="BTC State 0\nMultiSig Lock", shape=hexagon, fillcolor="#FFE4B5", fontsize=10];
+        BTCState1 [label="BTC State 1\nFunding Tx", shape=hexagon, fillcolor="#FFE4B5", fontsize=10];
+        BTCState2 [label="BTC State 2\nUpdate Tx", shape=hexagon, fillcolor="#FFE4B5", fontsize=10];
+    }
+
+    subgraph cluster_chain_eth {
+        label="Ethereum Event Chain";
+        style=rounded;
+        color="#4169E1";
+        bgcolor="#f0f0ff";
+        fontsize=12;
+        
+        ETHState0 [label="ETH State 0\nContract Deploy", shape=hexagon, fillcolor="#E6E6FA", fontsize=10];
+        ETHState1 [label="ETH State 1\nDeposit Event", shape=hexagon, fillcolor="#E6E6FA", fontsize=10];
+        ETHState2 [label="ETH State 2\nState Update", shape=hexagon, fillcolor="#E6E6FA", fontsize=10];
+    }
+
+    // Event Chain Progression
+    State0 -> State1 [label=" Tx1 + Proof1\n + Signatures", labeldistance=2.5, color="#2F4F4F"];
+    State1 -> State2 [label=" Tx2 + Proof2\n + Signatures", labeldistance=2.5, color="#2F4F4F"];
+    State2 -> State3 [label=" Tx3 + Proof3\n + Signatures", labeldistance=2.5, color="#2F4F4F"];
+    State3 -> StateN [label=" TxN + ProofN\n + Signatures", labeldistance=2.5, color="#2F4F4F", style=dashed];
+
+    // Chain-specific progressions
+    BTCState0 -> BTCState1 [label=" BTC Tx", color="#FF8C00"];
+    BTCState1 -> BTCState2 [label=" BTC Tx", color="#FF8C00"];
+    
+    ETHState0 -> ETHState1 [label=" ETH Tx", color="#4169E1"];
+    ETHState1 -> ETHState2 [label=" ETH Tx", color="#4169E1"];
+
+    // Operations trigger event creation
+    JoinOp -> State1 [label=" Generate Join Event", labeldistance=2.0, color="#32CD32"];
+    UpdateOp -> State2 [label=" Generate Update Event", labeldistance=2.0, color="#32CD32"];
+    JoinOp -> State3 [label=" Generate Join Event", labeldistance=2.0, color="#32CD32"];
+    CommitOp -> StateN [label=" Generate Commit Event", labeldistance=2.0, color="#32CD32"];
+
+    // Cross-chain synchronization
+    State1 -> BTCState1 [label=" Sync to BTC", labeldistance=1.5, style=dashed, color="#FF8C00"];
+    State1 -> ETHState1 [label=" Sync to ETH", labeldistance=1.5, style=dashed, color="#4169E1"];
+    State2 -> BTCState2 [label=" Sync to BTC", labeldistance=1.5, style=dashed, color="#FF8C00"];
+    State2 -> ETHState2 [label=" Sync to ETH", labeldistance=1.5, style=dashed, color="#4169E1"];
+
+    // Event validation flows
+    ValidationEngine [label="Event Validation\nEngine", shape=diamond, fillcolor="#98FB98", fontsize=11];
+    
+    State1 -> ValidationEngine [label=" Validate", style=dotted, color="#008000"];
+    State2 -> ValidationEngine [label=" Validate", style=dotted, color="#008000"];
+    State3 -> ValidationEngine [label=" Validate", style=dotted, color="#008000"];
+
+    // Legend positioned in lower left
+    legend [shape=none, margin=0, pos="0,0!", label=<
+        <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4">
+            <TR>
+                <TD COLSPAN="2" BGCOLOR="#f0f0f0"><B>Legend</B></TD>
+            </TR>
+            <TR>
+                <TD BGCOLOR="#FFA07A" WIDTH="20" HEIGHT="20"></TD>
+                <TD ALIGN="left">Channel Operations</TD>
+            </TR>
+            <TR>
+                <TD BGCOLOR="#FFFACD" WIDTH="20" HEIGHT="20"></TD>
+                <TD ALIGN="left">Event Chain States</TD>
+            </TR>
+            <TR>
+                <TD BGCOLOR="#FFE4B5" WIDTH="20" HEIGHT="20"></TD>
+                <TD ALIGN="left">Bitcoin Chain</TD>
+            </TR>
+            <TR>
+                <TD BGCOLOR="#E6E6FA" WIDTH="20" HEIGHT="20"></TD>
+                <TD ALIGN="left">Ethereum Chain</TD>
+            </TR>
+            <TR>
+                <TD BGCOLOR="#98FB98" WIDTH="20" HEIGHT="20"></TD>
+                <TD ALIGN="left">Validation</TD>
+            </TR>
+        </TABLE>
+    >];
+
+    // Graph title
+    label="\nEvent Chain Interaction with State Channel Lifecycle";
+    fontname="Arial Bold";
+    fontsize=16;
+    labelloc="t";
+}

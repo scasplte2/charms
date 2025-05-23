@@ -1,0 +1,87 @@
+digraph CharmsLifecycle {
+    rankdir=LR;
+    nodesep=0.1;
+    ranksep=0.8;
+    splines=polyline;
+    node [shape=box, style=filled, fontsize=20, fontname="Arial", margin="0.3,0.2"];
+    edge [fontname="Arial", fontsize=14, penwidth=1.5, minlen=2]; 
+    
+    {
+        rank=same;
+        BitcoinTx [label="Bitcoin Transaction", fillcolor=lightblue];
+        CharmSpell [label="Charms Spell", fillcolor=lightsalmon];
+        ProofGeneration [label="zkVM Proof\nGeneration", fillcolor=lightgreen];
+        UTXOCreation [label="UTXO with Charms", fillcolor=lightcyan];
+        CharmSpending [label="Charm Spending", fillcolor=lightsalmon];
+        CrossChainTransfer [label="Cross-Chain\nTransfer", fillcolor=gold];
+    }
+    
+    App [label="App\n(tag, identity, VK)", shape=ellipse, fillcolor=white];
+    Data [label="Data\n(arbitrary for NFTs,\namount for tokens)", shape=ellipse, fillcolor=white];
+    Transaction [label="Transaction\n(ins, refs, outs)", shape=ellipse, fillcolor=white];
+    AppContract [label="App Contract\n(predicate function)", shape=ellipse, fillcolor=white];
+    NormalizedSpell [label="NormalizedSpell\n(version, tx, app_inputs)", shape=ellipse, fillcolor=white];
+    
+    subgraph cluster_utxo {
+        label="UTXO with Charms (String of Charms)";
+        style=dashed;
+        color=grey;
+        
+        Charm1 [label="Charm1\nApp1 → Data1", fillcolor=lightpink];
+        Charm2 [label="Charm2\nApp2 → Data2", fillcolor=lightpink];
+        CharmN [label="CharmN\nAppN → DataN", fillcolor=lightpink];
+        
+        Charm1 -> Charm2 [style=invis];
+        Charm2 -> CharmN [style=invis];
+    }
+    
+    subgraph cluster_cross_chain {
+        label="Cross-Chain Transfer";
+        style=dashed;
+        color=grey;
+        
+        SourceChain [label="Source Chain\n(e.g., Bitcoin)", fillcolor=lightcyan];
+        TargetChain [label="Target Chain\n(e.g., Cardano)", fillcolor=lightcyan];
+        OuterUTXOID [label="outer_utxo_id\n(points to target chain)", fillcolor=white, shape=ellipse];
+    }
+    
+    subgraph cluster_proof_system {
+        label="Recursive zkVM Proof System";
+        style=dashed;
+        color=grey;
+        
+        SpellProof [label="Spell Proof\n(verifies spell is well-formed)", fillcolor=lightgreen];
+        AppProofs [label="App Contract Proofs\n(verifies app contracts are satisfied)", fillcolor=lightgreen];
+        PrerequisiteProofs [label="Prerequisite Transaction Proofs\n(verifies input UTXOs are legitimate)", fillcolor=lightgreen];
+        Groth16 [label="Groth16 Proof\n(for efficient verification)", fillcolor=lightgreen];
+    }
+    
+    BitcoinTx -> CharmSpell [label="Adds metadata\n(spell)"];
+    CharmSpell -> ProofGeneration [label="Generate proof for"];
+    ProofGeneration -> UTXOCreation [label="Creates"];
+    UTXOCreation -> CharmSpending [label="Can be spent\nlater by"];
+    CharmSpending -> ProofGeneration [label="Requires new\nproof"];
+    UTXOCreation -> CrossChainTransfer [label="Can be moved\nvia"];
+    
+    App -> CharmSpell [label="Defines\nasset type"];
+    Data -> CharmSpell [label="Provides\nasset data"];
+    Transaction -> CharmSpell [label="Encodes\nUTXO transitions"];
+    AppContract -> ProofGeneration [label="Validates\nstate transitions"];
+    CharmSpell -> NormalizedSpell [label="Normalized for\nefficient encoding"];
+    NormalizedSpell -> ProofGeneration [label="Input for\nzkVM"];
+    
+    UTXOCreation -> Charm1 [lhead=cluster_utxo, label="Contains\nstring of charms"];
+    
+    ProofGeneration -> SpellProof [lhead=cluster_proof_system, label="Generates"];
+    SpellProof -> AppProofs [style=dashed, color=grey, label="Verifies"];
+    SpellProof -> PrerequisiteProofs [style=dashed, color=grey, label="Verifies\nrecursively"];
+    SpellProof -> Groth16 [style=dashed, color=grey, label="Wrapped as"];
+    
+    CrossChainTransfer -> SourceChain [lhead=cluster_cross_chain, label="Involves"];
+    SourceChain -> OuterUTXOID [style=dashed, color=grey, label="Links via"];
+    OuterUTXOID -> TargetChain [style=dashed, color=grey, label="Points to"];
+    
+    label="\n\nCharms Protocol Lifecycle\nFlow of Operations and Data";
+    fontname="Arial Bold";
+    fontsize=16;
+}

@@ -1,0 +1,18 @@
+Hey Cline, take a look at the charms whitepaper and the docs\ then I would like to have a research discussion to explore different utxo smart contract systems and how charms can learn from these previous iterations. In the .research\ dir I have included some diagrams from my own attempt at a cross-chain transaction model that I called the IO transaction model (or IOTX) with the idea being that a simple (proposition / proof) pair being the kernel exposed to users for interacting with "smart contracts" to advance the ledger state. I've also included some pdf research paper that informed my own learning. I've also included some of the reference metnioned in the charms whitepaper. I would like for you to go over these previous iterations, as well as explore some of the other exmaples from protocols such as Nervos and Alephium
+
+Cardano
+https://aiken-lang.org/fundamentals/eutxo
+
+Ergo
+(on this local machine /home/scas/git/Emurgo-Research/)
+https://github.com/ergoplatform/ergoscript-by-example/tree/main 
+
+Nervos
+https://docs.nervos.org/docs/script/intro-to-script 
+
+Alephium
+https://ralph.alephium.org/ 
+
+I am specically interested in exploring how all of these models can be generalized and supported (Along with Ethereum and other EVM chains) in a cross-chain model, expanding on what is explored in section 6 of the docs\. Then I am interested to explore if we can generalize these examples into a structure that supports the creation & destruction of "hash-linked event chains" of varying complexity (an event chain which has sub-event chains that may depend on separate logic of the sub-event chain or external logic of a higher order event chain) where the lifecycles of the event chains are described via finite state machines and modeling state channels using charms where the internal state channel interface is (stateSchema, txSchema, combineFns, valdateFns) and the some other (maybe external protocol) for defining a structure with (launch, join, leave, commit, rollup, destroy) on these state-channels. This is building on the topos ideas introduced in the section 5 of the docs\ . 
+
+From all of this, what are the next questions we should explore? Can we create a research strategy for exploring the potential of this idea, exploring the prior work in the field, the feasibility of this solution, and whether it is a worthwhile endeavor to explore (and if so, why / why not?)

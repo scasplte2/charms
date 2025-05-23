@@ -1,0 +1,119 @@
+digraph AssetConstructionFlow {
+    rankdir=TB;
+    nodesep=0.8;
+    ranksep=1.0;
+    splines=true;
+    node [shape=box, style=filled, fontname="Arial", margin="0.3,0.2"];
+    edge [fontname="Arial", fontsize=11, penwidth=1.5];
+    
+    // Development Phase
+    subgraph cluster_development {
+        label="Development Phase";
+        style=rounded;
+        color="#2E8B57";
+        bgcolor="#F0FFF0";
+        fontsize=14;
+        
+        DevCode [label="Write App Contract\n(Rust code with\ncharms_sdk::main!)", fillcolor="#98FB98", fontsize=12];
+        Compile [label="Compile to RISC-V\n(charms app build)", fillcolor="#90EE90", fontsize=12];
+        Test [label="Test App Logic\n(charms app run)", fillcolor="#90EE90", fontsize=12];
+    }
+    
+    // App Registration Phase
+    subgraph cluster_registration {
+        label="App Registration Phase";
+        style=rounded;
+        color="#4169E1";
+        bgcolor="#F0F8FF";
+        fontsize=14;
+        
+        GenerateVK [label="Generate Verification Key\n(from RISC-V binary)", fillcolor="#87CEEB", fontsize=12];
+        CreateApp [label="Create App Structure\n(tag, identity, vk)", fillcolor="#87CEFA", fontsize=12];
+        RegisterApp [label="Register App\n(make VK publicly known)", fillcolor="#6495ED", fontsize=12];
+    }
+    
+    // Asset Creation Phase
+    subgraph cluster_creation {
+        label="Asset Creation Phase";
+        style=rounded;
+        color="#FF6347";
+        bgcolor="#FFF8DC";
+        fontsize=14;
+        
+        DefineData [label="Define Asset Data\n(amount for tokens,\narbitrary for NFTs)", fillcolor="#FFE4B5", fontsize=12];
+        CreateCharm [label="Create Charm\n(App → Data mapping)", fillcolor="#DEB887", fontsize=12];
+        ComposeUTXO [label="Compose UTXO\n(string of charms)", fillcolor="#F4A460", fontsize=12];
+    }
+    
+    // Spell Creation Phase
+    subgraph cluster_spell {
+        label="Spell Creation & Proof Phase";
+        style=rounded;
+        color="#8B008B";
+        bgcolor="#F8F8FF";
+        fontsize=14;
+        
+        CreateSpell [label="Create Spell\n(version, apps, ins, outs)", fillcolor="#DDA0DD", fontsize=12];
+        NormalizeSpell [label="Normalize Spell\n(for efficient encoding)", fillcolor="#DA70D6", fontsize=12];
+        GenerateProof [label="Generate zkVM Proof\n(SP1 → Groth16)", fillcolor="#BA55D3", fontsize=12];
+    }
+    
+    // Bitcoin Integration Phase
+    subgraph cluster_bitcoin {
+        label="Bitcoin Integration Phase";
+        style=rounded;
+        color="#FF8C00";
+        bgcolor="#FFFAF0";
+        fontsize=14;
+        
+        EmbedSpell [label="Embed in Bitcoin Tx\n(Taproot witness)", fillcolor="#FFE4B5", fontsize=12];
+        BroadcastTx [label="Broadcast Transaction\n(to Bitcoin network)", fillcolor="#FFA500", fontsize=12];
+        ConfirmUTXO [label="UTXO with Charms\n(confirmed on-chain)", fillcolor="#FF7F50", fontsize=12];
+    }
+    
+    // Example Apps
+    TokenApp [label="Example: Token App\n• tag: 't'\n• validates amount conservation\n• allows minting/burning", shape=note, fillcolor="#FFFFE0", fontsize=10];
+    NFTApp [label="Example: NFT App\n• tag: 'n'\n• validates unique ownership\n• allows state updates", shape=note, fillcolor="#FFFFE0", fontsize=10];
+    
+    // Development Flow
+    DevCode -> Compile [label="cargo build"];
+    Compile -> Test [label="validate logic"];
+    Test -> GenerateVK [label="if tests pass"];
+    
+    // Registration Flow
+    GenerateVK -> CreateApp [label="compute app hash"];
+    CreateApp -> RegisterApp [label="publish VK"];
+    
+    // Creation Flow
+    RegisterApp -> DefineData [label="define asset properties"];
+    DefineData -> CreateCharm [label="bind app to data"];
+    CreateCharm -> ComposeUTXO [label="multiple charms\nper UTXO"];
+    
+    // Spell Flow
+    ComposeUTXO -> CreateSpell [label="define transaction"];
+    CreateSpell -> NormalizeSpell [label="optimize encoding"];
+    NormalizeSpell -> GenerateProof [label="prove correctness"];
+    
+    // Bitcoin Flow
+    GenerateProof -> EmbedSpell [label="include proof"];
+    EmbedSpell -> BroadcastTx [label="submit to network"];
+    BroadcastTx -> ConfirmUTXO [label="mine block"];
+    
+    // Examples
+    DevCode -> TokenApp [style=dashed, color="#666666"];
+    DevCode -> NFTApp [style=dashed, color="#666666"];
+    
+    // Data structures
+    AppStruct [label="App Structure:\n{\n  tag: char,\n  identity: B32,\n  vk: B32\n}", shape=ellipse, fillcolor="#E6E6FA", fontsize=10];
+    CharmStruct [label="Charm Structure:\nBTreeMap<App, Data>", shape=ellipse, fillcolor="#E6E6FA", fontsize=10];
+    SpellStruct [label="Spell Structure:\n{\n  version: u32,\n  tx: Transaction,\n  app_public_inputs\n}", shape=ellipse, fillcolor="#E6E6FA", fontsize=10];
+    
+    CreateApp -> AppStruct [style=dotted, color="#888888"];
+    CreateCharm -> CharmStruct [style=dotted, color="#888888"];
+    CreateSpell -> SpellStruct [style=dotted, color="#888888"];
+    
+    label="\nCharms Asset Construction Flow\nFrom Development to On-Chain Deployment";
+    fontname="Arial Bold";
+    fontsize=16;
+    labelloc="t";
+}
